@@ -851,6 +851,9 @@
         <header class="header">
             <h1>Hive Perform - Cold Call Scripts</h1>
             <div class="header-actions">
+                <button class="btn btn-success" id="pushToggleBtn" style="display: none;">
+                    🔔 Push ON
+                </button>
                 <button class="btn btn-secondary" id="editScriptsBtn" style="display: none;">
                     ✎ Edit Scripts
                 </button>
@@ -1074,8 +1077,14 @@
             editorState: {
                 activeRole: 'CEO_FOUNDER',
                 activeVersions: {} // sectionName -> versionIndex
-            }
+            },
+            pushNotifications: true, // Enable/disable push notifications
+            lastNotifiedLeadId: null // Track last notified lead to avoid duplicates
         };
+
+        // Ntfy configuration
+        const NTFY_TOPIC = 'cold-calling-hiveperform';
+        const NTFY_URL = `https://ntfy.sh/${NTFY_TOPIC}`;
 
         // Default scripts for each role
         function getDefaultScripts() {
@@ -1254,6 +1263,57 @@
         }
 
         // ============================================
+        // PUSH NOTIFICATIONS (Ntfy)
+        // ============================================
+
+        async function sendPhoneNotification(lead) {
+            if (!state.pushNotifications) return;
+
+            const leadId = generateLeadId(lead);
+
+            // Don't send duplicate notifications for the same lead
+            if (state.lastNotifiedLeadId === leadId) return;
+            state.lastNotifiedLeadId = leadId;
+
+            const phone = formatPhone(lead.phone);
+            if (!phone || phone === '-') return;
+
+            try {
+                await fetch(NTFY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Title': `${lead.contactName || 'Unknown'} - ${lead.company || 'Unknown'}`,
+                        'Tags': 'phone,outbox'
+                    },
+                    body: phone
+                });
+                console.log('Phone notification sent:', phone);
+            } catch (error) {
+                console.error('Failed to send notification:', error);
+            }
+        }
+
+        function togglePushNotifications() {
+            state.pushNotifications = !state.pushNotifications;
+            updatePushToggleUI();
+            saveState();
+
+            // If just enabled, send notification for current lead
+            if (state.pushNotifications && state.filteredLeads.length > 0) {
+                state.lastNotifiedLeadId = null; // Reset to allow sending
+                sendPhoneNotification(state.filteredLeads[state.currentIndex]);
+            }
+        }
+
+        function updatePushToggleUI() {
+            const btn = document.getElementById('pushToggleBtn');
+            if (btn) {
+                btn.textContent = state.pushNotifications ? '🔔 Push ON' : '🔕 Push OFF';
+                btn.className = state.pushNotifications ? 'btn btn-success' : 'btn btn-secondary';
+            }
+        }
+
+        // ============================================
         // CSV PARSING
         // ============================================
 
@@ -1396,6 +1456,9 @@
 
             // Script title
             document.getElementById('scriptRoleTitle').textContent = getRoleCategoryLabel(roleCategory);
+
+            // Send push notification with phone number
+            sendPhoneNotification(lead);
         }
 
         function renderEmptyState() {
@@ -1851,7 +1914,8 @@
                 scripts: state.scripts,
                 selectedVersions: state.selectedVersions,
                 currentIndex: state.currentIndex,
-                filters: state.filters
+                filters: state.filters,
+                pushNotifications: state.pushNotifications
             };
             localStorage.setItem('coldCallAppState', JSON.stringify(data));
         }
@@ -1867,6 +1931,7 @@
                     state.selectedVersions = data.selectedVersions || {};
                     state.currentIndex = data.currentIndex || 0;
                     state.filters = data.filters || state.filters;
+                    state.pushNotifications = data.pushNotifications !== undefined ? data.pushNotifications : true;
 
                     if (state.leads.length > 0) {
                         showMainContent();
@@ -1886,9 +1951,11 @@
             document.getElementById('uploadSection').classList.add('hidden');
             document.getElementById('mainContent').classList.add('active');
             document.getElementById('filtersBar').classList.add('active');
+            document.getElementById('pushToggleBtn').style.display = 'inline-flex';
             document.getElementById('editScriptsBtn').style.display = 'inline-flex';
             document.getElementById('exportBtn').style.display = 'inline-flex';
             document.getElementById('newUploadBtn').style.display = 'inline-flex';
+            updatePushToggleUI();
         }
 
         function resetForNewUpload() {
@@ -1943,6 +2010,9 @@
             document.getElementById('closeEditorModal').addEventListener('click', hideScriptEditor);
             document.getElementById('closeEditor').addEventListener('click', hideScriptEditor);
             document.getElementById('saveScripts').addEventListener('click', saveScripts);
+
+            // Push notifications toggle
+            document.getElementById('pushToggleBtn').addEventListener('click', togglePushNotifications);
 
             // Export
             document.getElementById('exportBtn').addEventListener('click', exportCSV);
