@@ -274,7 +274,11 @@
             margin-bottom: 20px;
         }
 
-        .script-header h3 { color: #1a365d; font-size: 18px; }
+        .script-header h3 { color: #1a365d; font-size: 18px; margin: 0; }
+        .rep-toggle { display: flex; gap: 5px; }
+        .rep-toggle-btn { padding: 6px 16px; border: 1px solid #e2e8f0; background: #fff; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+        .rep-toggle-btn:hover { background: #f7fafc; }
+        .rep-toggle-btn.active { background: #4299e1; color: white; border-color: #4299e1; }
         .script-section { margin-bottom: 20px; }
 
         .script-section-header {
@@ -693,16 +697,8 @@
         <header class="header">
             <h1>Hive Perform - Cold Call Scripts</h1>
             <div class="header-actions">
-                <div class="rep-selector" id="repSelectorContainer" style="display: none;">
-                    <label>Rep:</label>
-                    <select id="repSelector"></select>
-                </div>
-                <button class="btn btn-notion" id="notionSyncBtn" style="display: none;">↻ Sync Notion</button>
-                <button class="btn btn-success" id="pushToggleBtn" style="display: none;">🔔 Push ON</button>
                 <button class="btn btn-secondary" id="historyBtn" style="display: none;">📋 History</button>
                 <button class="btn btn-secondary" id="editBtn" style="display: none;">⚙ Settings</button>
-                <button class="btn btn-secondary" id="exportBtn" style="display: none;">⬇ Export CSV</button>
-                <button class="btn btn-secondary" id="newUploadBtn" style="display: none;">↑ New Data</button>
             </div>
         </header>
 
@@ -824,8 +820,12 @@
             </div>
 
             <div class="script-panel">
-                <div class="script-header">
+                <div class="script-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3>Script: <span id="scriptRoleTitle">-</span></h3>
+                    <div class="rep-toggle" id="repToggle">
+                        <button class="rep-toggle-btn active" data-rep="Kay">Kay</button>
+                        <button class="rep-toggle-btn" data-rep="Joe">Joe</button>
+                    </div>
                 </div>
                 <div id="scriptSections"></div>
             </div>
@@ -841,6 +841,10 @@
             </div>
             <div class="modal-body">
                 <textarea class="notes-textarea" id="callNotes" placeholder="Enter notes here... (Press Enter to save)"></textarea>
+                <div id="objectionsSection" style="display: none;">
+                    <label style="font-size: 13px; font-weight: 500; color: #4a5568; margin-bottom: 5px; display: block;">Objections</label>
+                    <textarea class="notes-textarea" id="callObjections" placeholder="Enter any objections raised..." style="min-height: 60px; font-size: 13px;"></textarea>
+                </div>
                 <div class="notion-checkbox" id="dontFollowUpSection" style="display: none; margin-bottom: 15px;">
                     <input type="checkbox" id="dontFollowUpCheckbox">
                     <label for="dontFollowUpCheckbox">Don't follow up</label>
@@ -875,6 +879,14 @@
                     <div class="add-rep-form">
                         <input type="text" id="newRepName" placeholder="Enter rep name...">
                         <button class="btn btn-success" id="addRepBtn">Add Rep</button>
+                    </div>
+                </div>
+
+                <div class="notion-manager" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                    <h4>🔔 Notifications</h4>
+                    <div class="notion-checkbox">
+                        <input type="checkbox" id="pushNotificationsToggle" checked>
+                        <label for="pushNotificationsToggle">Push notifications (sends phone number to your device)</label>
                     </div>
                 </div>
 
@@ -961,8 +973,8 @@
             },
             pushNotifications: true,
             lastNotifiedLeadId: null,
-            reps: ['Default Rep'],
-            currentRep: 'Default Rep',
+            reps: ['Kay', 'Joe'],
+            currentRep: 'Kay',
             historyTab: 'answered',
             isFirstLoad: true,
             // Notion integration
@@ -1309,6 +1321,7 @@
                     const callCount = getNotionPropertyValue(page, 'No. of Calls') || 0;
                     const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
                     const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
+                    const objections = getNotionPropertyValue(page, 'Objections');
 
                     // If there's call history in Notion, populate local state
                     if (callCount > 0 && !state.callHistory[leadId]) {
@@ -1327,6 +1340,7 @@
                                 date: new Date().toISOString(),
                                 status: (i === callCount - 1) ? localStatus : 'no_answer', // Last call has actual status
                                 notes: (i === callCount - 1) ? coldCallNotes : '', // Notes only on last call
+                                objections: (i === callCount - 1) ? objections : '', // Objections only on last call
                                 dontFollowUp: false,
                                 rep: 'Imported'
                             });
@@ -1392,11 +1406,15 @@
                 return `[${date}] ${h.notes}`;
             }).filter(n => n).join('\n\n');
 
+            // Combine all objections
+            const allObjections = history.map(h => h.objections).filter(o => o).join('\n');
+
             try {
                 const properties = {
                     'No. of Calls': { number: callCount },
                     'Cold Call Notes': { rich_text: [{ text: { content: allNotes.substring(0, 2000) } }] },
-                    'Call': { select: { name: callStatus } }
+                    'Call': { select: { name: callStatus } },
+                    'Objections': { rich_text: [{ text: { content: allObjections.substring(0, 2000) } }] }
                 };
 
                 // Only update Follow up status if it's an answered call
@@ -1677,12 +1695,13 @@
             showNotesModal(leadId, roleCategory, status);
         }
 
-        function addCallRecord(leadId, status, notes, roleCategory, dontFollowUp = false) {
+        function addCallRecord(leadId, status, notes, roleCategory, dontFollowUp = false, objections = '') {
             if (!state.callHistory[leadId]) state.callHistory[leadId] = [];
             state.callHistory[leadId].push({
                 date: new Date().toISOString(),
                 status,
                 notes,
+                objections,
                 dontFollowUp,
                 scriptSnapshot: status === 'answered' ? getCurrentScriptSnapshot(roleCategory) : null,
                 rep: state.currentRep
@@ -1712,6 +1731,8 @@
         function showNotesModal(leadId, roleCategory, status) {
             const modal = document.getElementById('notesModal');
             const textarea = document.getElementById('callNotes');
+            const objectionsTextarea = document.getElementById('callObjections');
+            const objectionsSection = document.getElementById('objectionsSection');
             const snapshotContainer = document.getElementById('scriptSnapshotContent');
             const snapshotSection = document.getElementById('scriptSnapshotSection');
             const dontFollowUpSection = document.getElementById('dontFollowUpSection');
@@ -1720,11 +1741,13 @@
             const titleMap = { 'answered': 'Call Notes - Answered', 'no_answer': 'Call Notes - No Answer', 'didnt_ring': 'Call Notes - Didn\'t Ring' };
             document.getElementById('notesModalTitle').textContent = titleMap[status] || 'Call Notes';
             textarea.value = '';
+            objectionsTextarea.value = '';
             dontFollowUpCheckbox.checked = false;
 
             if (status === 'answered') {
                 snapshotSection.style.display = 'block';
                 dontFollowUpSection.style.display = 'flex';
+                objectionsSection.style.display = 'block';
                 const snapshot = getCurrentScriptSnapshot(roleCategory);
                 const sectionLabels = { openingLine: 'Opening Line', painPoint: 'Pain Point', discoveryQuestions: 'Discovery Questions', ourSolution: 'Our Solution', valueStatement: 'Value Statement' };
                 snapshotContainer.innerHTML = snapshot.map(s => `
@@ -1736,6 +1759,7 @@
             } else {
                 snapshotSection.style.display = 'none';
                 dontFollowUpSection.style.display = 'none';
+                objectionsSection.style.display = 'none';
             }
 
             modal.dataset.leadId = leadId;
@@ -1750,11 +1774,12 @@
         function saveNotesAndContinue() {
             const modal = document.getElementById('notesModal');
             const notes = document.getElementById('callNotes').value;
+            const objections = document.getElementById('callObjections').value;
             const dontFollowUp = document.getElementById('dontFollowUpCheckbox').checked;
             const leadId = modal.dataset.leadId;
             const roleCategory = modal.dataset.roleCategory;
             const status = modal.dataset.status;
-            addCallRecord(leadId, status, notes, roleCategory, dontFollowUp);
+            addCallRecord(leadId, status, notes, roleCategory, dontFollowUp, objections);
             hideNotesModal();
             moveToNext();
         }
@@ -1771,6 +1796,8 @@
             renderRepList();
             updateEditorStats();
             loadNotionSettings();
+            // Load push notifications setting
+            document.getElementById('pushNotificationsToggle').checked = state.pushNotifications;
             modal.classList.add('active');
         }
 
@@ -1964,19 +1991,20 @@
                 const status = getLeadStatus(leadId);
                 const callCount = getCallCount(leadId);
 
-                // Get all notes combined for this lead
+                // Get all notes and objections combined for this lead
                 const allNotes = history.map(h => h.notes).filter(n => n).join('\n');
+                const allObjections = history.map(h => h.objections).filter(o => o).join('\n');
 
                 if (state.historyTab === 'do_not_call' && isOnDoNotCallList(leadId)) {
-                    items.push({ lead, history: history[history.length - 1] || null, status: 'do_not_call', callCount, allNotes });
+                    items.push({ lead, history: history[history.length - 1] || null, status: 'do_not_call', callCount, allNotes, allObjections });
                 } else if (state.historyTab === 'not_called' && status === 'not_called') {
-                    items.push({ lead, history: null, status: 'not_called', callCount, allNotes });
+                    items.push({ lead, history: null, status: 'not_called', callCount, allNotes, allObjections });
                 } else if (state.historyTab !== 'not_called' && state.historyTab !== 'do_not_call') {
                     // Show ONE entry per lead with latest call of that type
                     const matchingCalls = history.filter(h => h.status === state.historyTab);
                     if (matchingCalls.length > 0) {
                         const latestCall = matchingCalls[matchingCalls.length - 1];
-                        items.push({ lead, history: latestCall, status: latestCall.status, callCount, allNotes });
+                        items.push({ lead, history: latestCall, status: latestCall.status, callCount, allNotes, allObjections });
                     }
                 }
             });
@@ -2001,6 +2029,7 @@
                         </div>
                         <div class="history-item-phone">${formatPhone(item.lead.phone)}</div>
                         ${item.allNotes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.allNotes}</div>` : ''}
+                        ${item.allObjections ? `<div class="history-item-notes" style="color: #c53030;"><strong>Objections:</strong> ${item.allObjections}</div>` : ''}
                         ${item.history && item.history.scriptSnapshot ? `
                             <div class="history-item-notes">
                                 <strong>Script used:</strong> ${item.history.scriptSnapshot.map(s => s.versionName).join(', ')}
@@ -2077,19 +2106,19 @@
         // ============================================
         // UI HELPERS
         // ============================================
+        function updateRepToggle() {
+            document.querySelectorAll('.rep-toggle-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.rep === state.currentRep);
+            });
+        }
+
         function showMainContent() {
             document.getElementById('uploadSection').classList.add('hidden');
             document.getElementById('mainContent').classList.add('active');
             document.getElementById('filtersBar').classList.add('active');
-            document.getElementById('pushToggleBtn').style.display = 'inline-flex';
             document.getElementById('historyBtn').style.display = 'inline-flex';
             document.getElementById('editBtn').style.display = 'inline-flex';
-            document.getElementById('exportBtn').style.display = 'inline-flex';
-            document.getElementById('newUploadBtn').style.display = 'inline-flex';
-            document.getElementById('repSelectorContainer').style.display = 'flex';
-            document.getElementById('notionSyncBtn').style.display = state.notion.enabled ? 'inline-flex' : 'none';
-            updatePushToggleUI();
-            updateRepSelector();
+            updateRepToggle();
         }
 
         function resetForNewUpload() {
@@ -2123,7 +2152,6 @@
                 reader.readAsText(file);
             });
 
-            document.getElementById('newUploadBtn').addEventListener('click', resetForNewUpload);
             document.getElementById('prevBtn').addEventListener('click', moveToPrevious);
             document.getElementById('btnAnswered').addEventListener('click', () => recordCall('answered'));
             document.getElementById('btnNoAnswer').addEventListener('click', () => recordCall('no_answer'));
@@ -2135,19 +2163,28 @@
             document.getElementById('closeEditorModal').addEventListener('click', hideEditor);
             document.getElementById('closeEditor').addEventListener('click', hideEditor);
             document.getElementById('saveScripts').addEventListener('click', saveScripts);
-            document.getElementById('pushToggleBtn').addEventListener('click', togglePushNotifications);
-            document.getElementById('exportBtn').addEventListener('click', exportCSV);
             document.getElementById('historyBtn').addEventListener('click', showHistory);
             document.getElementById('closeHistoryModal').addEventListener('click', hideHistory);
             document.getElementById('addRepBtn').addEventListener('click', addRep);
             document.getElementById('newRepName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addRep(); });
-            document.getElementById('repSelector').addEventListener('change', (e) => {
-                state.currentRep = e.target.value;
+
+            // Rep toggle buttons
+            document.querySelectorAll('.rep-toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.currentRep = btn.dataset.rep;
+                    updateRepToggle();
+                    saveState();
+                    if (state.filteredLeads.length > 0) {
+                        const lead = state.filteredLeads[state.currentIndex];
+                        renderScripts(categorizeRole(lead.role), lead);
+                    }
+                });
+            });
+
+            // Push notifications toggle in settings
+            document.getElementById('pushNotificationsToggle').addEventListener('change', (e) => {
+                state.pushNotifications = e.target.checked;
                 saveState();
-                if (state.filteredLeads.length > 0) {
-                    const lead = state.filteredLeads[state.currentIndex];
-                    renderScripts(categorizeRole(lead.role), lead);
-                }
             });
 
             // Notion event listeners
@@ -2158,7 +2195,6 @@
                     document.querySelector('.notion-manager')?.scrollIntoView({ behavior: 'smooth' });
                 }, 100);
             });
-            document.getElementById('notionSyncBtn').addEventListener('click', syncFromNotion);
             document.getElementById('testNotionBtn').addEventListener('click', () => {
                 saveNotionSettings();
                 testNotionConnection();
