@@ -241,6 +241,8 @@
         .call-action-btn.answered:hover { background: #9ae6b4; }
         .call-action-btn.no-answer { background: #feebc8; color: #7b341e; }
         .call-action-btn.no-answer:hover { background: #fbd38d; }
+        .call-action-btn.didnt-ring { background: #fed7d7; color: #822727; }
+        .call-action-btn.didnt-ring:hover { background: #feb2b2; }
 
         .lead-navigation { display: flex; gap: 10px; margin-top: 15px; }
 
@@ -610,6 +612,8 @@
         .history-tab.no-answer.active { background: #ed8936; color: white; }
         .history-tab.not-called { background: #e2e8f0; color: #4a5568; }
         .history-tab.not-called.active { background: #718096; color: white; }
+        .history-tab.do-not-call { background: #fed7d7; color: #822727; }
+        .history-tab.do-not-call.active { background: #c53030; color: white; }
 
         .history-list { max-height: 400px; overflow-y: auto; }
 
@@ -623,6 +627,7 @@
 
         .history-item.answered { border-left-color: #48bb78; }
         .history-item.no-answer { border-left-color: #ed8936; }
+        .history-item.do-not-call { border-left-color: #c53030; }
 
         .history-item-header {
             display: flex;
@@ -723,7 +728,6 @@
                     </div>
                     <div class="lead-counter">
                         <div>Lead <strong id="currentLeadNum">0</strong> of <strong id="totalLeads">0</strong></div>
-                        <div id="filteredCount">(0 shown)</div>
                     </div>
                 </div>
 
@@ -769,6 +773,10 @@
                         <span class="icon">○</span>
                         No Answer
                     </button>
+                    <button class="call-action-btn didnt-ring" id="btnDidntRing">
+                        <span class="icon">✕</span>
+                        Didn't Ring
+                    </button>
                 </div>
 
                 <div class="lead-navigation">
@@ -777,6 +785,7 @@
                         <span class="keyboard-hint"><kbd>←</kbd> Previous</span>
                         <span class="keyboard-hint"><kbd>1</kbd> Answered</span>
                         <span class="keyboard-hint"><kbd>2</kbd> No Answer</span>
+                        <span class="keyboard-hint"><kbd>3</kbd> Didn't Ring</span>
                     </div>
                 </div>
             </div>
@@ -851,6 +860,7 @@
                     <button class="history-tab answered active" data-status="answered">Answered</button>
                     <button class="history-tab no-answer" data-status="no_answer">No Answer</button>
                     <button class="history-tab not-called" data-status="not_called">Not Called</button>
+                    <button class="history-tab do-not-call" data-status="do_not_call">Do Not Call</button>
                 </div>
                 <div class="history-list" id="historyList"></div>
             </div>
@@ -1031,6 +1041,21 @@
             return history[history.length - 1].status;
         }
 
+        function isOnDoNotCallList(leadId) {
+            const history = state.callHistory[leadId] || [];
+            // Check if any call was "didnt_ring"
+            const hasDidntRing = history.some(h => h.status === 'didnt_ring');
+            if (hasDidntRing) return true;
+            // Check if 3+ calls with no answer
+            const noAnswerCount = history.filter(h => h.status === 'no_answer').length;
+            return noAnswerCount >= 3;
+        }
+
+        function getCallCount(leadId) {
+            const history = state.callHistory[leadId] || [];
+            return history.length;
+        }
+
         function formatDate(date) {
             return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
@@ -1183,8 +1208,7 @@
             roleEl.className = 'lead-role ' + getRoleCategoryClass(roleCategory);
 
             document.getElementById('currentLeadNum').textContent = state.currentIndex + 1;
-            document.getElementById('totalLeads').textContent = state.leads.length;
-            document.getElementById('filteredCount').textContent = `(${state.filteredLeads.length} shown)`;
+            document.getElementById('totalLeads').textContent = state.filteredLeads.length;
             document.getElementById('prevBtn').disabled = state.currentIndex === 0;
 
             renderPreviousNotes(leadId);
@@ -1203,7 +1227,7 @@
             document.getElementById('leadLinkedIn').textContent = '-';
             document.getElementById('leadRole').textContent = '-';
             document.getElementById('currentLeadNum').textContent = '0';
-            document.getElementById('filteredCount').textContent = '(0 shown)';
+            document.getElementById('totalLeads').textContent = '0';
             document.getElementById('previousNotesSection').style.display = 'none';
         }
 
@@ -1236,7 +1260,8 @@
                 const currentVersion = versions[selectedIndex] || { name: 'Default', content: 'No content available' };
                 let content = currentVersion.content;
                 if (lead) {
-                    content = content.replace(/\[Name\]/g, lead.contactName || '[Name]');
+                    const firstName = lead.contactName ? lead.contactName.split(' ')[0] : '[Name]';
+                    content = content.replace(/\[Name\]/g, firstName);
                     content = content.replace(/\[Your Name\]/g, state.currentRep || '[Your Name]');
                     content = content.replace(/\[Vertical\]/g, lead.vertical || '[Vertical]');
                 }
@@ -1318,7 +1343,8 @@
             const snapshotContainer = document.getElementById('scriptSnapshotContent');
             const snapshotSection = document.getElementById('scriptSnapshotSection');
 
-            document.getElementById('notesModalTitle').textContent = status === 'answered' ? 'Call Notes - Answered' : 'Call Notes - No Answer';
+            const titleMap = { 'answered': 'Call Notes - Answered', 'no_answer': 'Call Notes - No Answer', 'didnt_ring': 'Call Notes - Didn\'t Ring' };
+            document.getElementById('notesModalTitle').textContent = titleMap[status] || 'Call Notes';
             textarea.value = '';
 
             if (status === 'answered') {
@@ -1557,12 +1583,15 @@
                 const leadId = generateLeadId(lead);
                 const history = state.callHistory[leadId] || [];
                 const status = getLeadStatus(leadId);
+                const callCount = getCallCount(leadId);
 
-                if (state.historyTab === 'not_called' && status === 'not_called') {
-                    items.push({ lead, history: null, status: 'not_called' });
-                } else if (state.historyTab !== 'not_called') {
+                if (state.historyTab === 'do_not_call' && isOnDoNotCallList(leadId)) {
+                    items.push({ lead, history: history[history.length - 1] || null, status: 'do_not_call', callCount });
+                } else if (state.historyTab === 'not_called' && status === 'not_called') {
+                    items.push({ lead, history: null, status: 'not_called', callCount });
+                } else if (state.historyTab !== 'not_called' && state.historyTab !== 'do_not_call') {
                     history.filter(h => h.status === state.historyTab).forEach(h => {
-                        items.push({ lead, history: h, status: h.status });
+                        items.push({ lead, history: h, status: h.status, callCount });
                     });
                 }
             });
@@ -1573,13 +1602,13 @@
             }
 
             container.innerHTML = items.map(item => {
-                const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : '';
+                const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : item.status === 'do_not_call' ? 'do-not-call' : '';
                 return `
                     <div class="history-item ${statusClass}">
                         <div class="history-item-header">
                             <div>
                                 <div class="history-item-name">${item.lead.contactName || 'Unknown'}</div>
-                                <div class="history-item-company">${item.lead.company || '-'}</div>
+                                <div class="history-item-company">${item.lead.company || '-'} · ${item.callCount} call${item.callCount !== 1 ? 's' : ''}</div>
                             </div>
                             ${item.history ? `<div class="history-item-date">${formatDate(item.history.date)}</div>` : ''}
                         </div>
@@ -1706,6 +1735,7 @@
             document.getElementById('prevBtn').addEventListener('click', moveToPrevious);
             document.getElementById('btnAnswered').addEventListener('click', () => recordCall('answered'));
             document.getElementById('btnNoAnswer').addEventListener('click', () => recordCall('no_answer'));
+            document.getElementById('btnDidntRing').addEventListener('click', () => recordCall('didnt_ring'));
             document.getElementById('closeNotesModal').addEventListener('click', hideNotesModal);
             document.getElementById('cancelNotes').addEventListener('click', hideNotesModal);
             document.getElementById('saveNotes').addEventListener('click', saveNotesAndContinue);
@@ -1757,6 +1787,7 @@
                     case 'ArrowLeft': moveToPrevious(); break;
                     case '1': recordCall('answered'); break;
                     case '2': recordCall('no_answer'); break;
+                    case '3': recordCall('didnt_ring'); break;
                 }
             });
 
