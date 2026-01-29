@@ -1306,20 +1306,31 @@
                     state.notionPageIds[leadId] = page.id;
 
                     // Load existing call data from Notion
-                    const callCount = getNotionPropertyValue(page, 'No. of Calls');
-                    const coldCallStatus = getNotionPropertyValue(page, 'Cold Call Status');
+                    const callCount = getNotionPropertyValue(page, 'No. of Calls') || 0;
+                    const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
                     const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
-                    const lastCallDate = getNotionPropertyValue(page, 'Call');
 
                     // If there's call history in Notion, populate local state
-                    if (callCount > 0 && coldCallStatus && !state.callHistory[leadId]) {
-                        const statusMap = { 'Answered': 'answered', 'No Answer': 'no_answer', 'Didn\'t Ring': 'didnt_ring', 'Do Not Call': 'didnt_ring' };
-                        state.callHistory[leadId] = [{
-                            date: lastCallDate || new Date().toISOString(),
-                            status: statusMap[coldCallStatus] || 'no_answer',
-                            notes: coldCallNotes,
-                            rep: state.currentRep
-                        }];
+                    if (callCount > 0 && !state.callHistory[leadId]) {
+                        // Map Notion "Call" column to local status
+                        const statusMap = {
+                            'Answered': 'answered',
+                            'Call again': 'no_answer',
+                            'Do not call': 'didnt_ring'  // Treat as didnt_ring so it goes to Do Not Call list
+                        };
+                        const localStatus = statusMap[callStatus] || 'no_answer';
+
+                        // Create history entries based on call count
+                        state.callHistory[leadId] = [];
+                        for (let i = 0; i < callCount; i++) {
+                            state.callHistory[leadId].push({
+                                date: new Date().toISOString(),
+                                status: (i === callCount - 1) ? localStatus : 'no_answer', // Last call has actual status
+                                notes: (i === callCount - 1) ? coldCallNotes : '', // Notes only on last call
+                                dontFollowUp: false,
+                                rep: 'Imported'
+                            });
+                        }
                     }
                     return lead;
                 });
