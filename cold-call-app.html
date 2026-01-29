@@ -24,7 +24,6 @@
             padding: 20px;
         }
 
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -35,6 +34,8 @@
             border-radius: 12px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         .header h1 {
@@ -46,6 +47,33 @@
             display: flex;
             gap: 12px;
             align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .rep-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rep-selector label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .rep-selector select {
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .rep-selector select option {
+            background: #1a365d;
+            color: white;
         }
 
         .btn {
@@ -61,53 +89,17 @@
             gap: 8px;
         }
 
-        .btn-primary {
-            background: #4299e1;
-            color: white;
-        }
+        .btn-primary { background: #4299e1; color: white; }
+        .btn-primary:hover { background: #3182ce; }
+        .btn-secondary { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.25); }
+        .btn-success { background: #48bb78; color: white; }
+        .btn-success:hover { background: #38a169; }
+        .btn-warning { background: #ed8936; color: white; }
+        .btn-warning:hover { background: #dd6b20; }
+        .btn-danger { background: #f56565; color: white; }
+        .btn-danger:hover { background: #e53e3e; }
 
-        .btn-primary:hover {
-            background: #3182ce;
-        }
-
-        .btn-secondary {
-            background: rgba(255,255,255,0.15);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.25);
-        }
-
-        .btn-success {
-            background: #48bb78;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #38a169;
-        }
-
-        .btn-warning {
-            background: #ed8936;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #dd6b20;
-        }
-
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #e53e3e;
-        }
-
-        /* Upload Section */
         .upload-section {
             background: white;
             border-radius: 12px;
@@ -118,23 +110,10 @@
             margin-bottom: 20px;
         }
 
-        .upload-section.hidden {
-            display: none;
-        }
-
-        .upload-section h2 {
-            color: #2d3748;
-            margin-bottom: 10px;
-        }
-
-        .upload-section p {
-            color: #718096;
-            margin-bottom: 20px;
-        }
-
-        .upload-section input[type="file"] {
-            display: none;
-        }
+        .upload-section.hidden { display: none; }
+        .upload-section h2 { color: #2d3748; margin-bottom: 10px; }
+        .upload-section p { color: #718096; margin-bottom: 20px; }
+        .upload-section input[type="file"] { display: none; }
 
         .upload-label {
             display: inline-block;
@@ -147,22 +126,11 @@
             transition: background 0.2s;
         }
 
-        .upload-label:hover {
-            background: #3182ce;
-        }
+        .upload-label:hover { background: #3182ce; }
 
-        /* Main Content */
-        .main-content {
-            display: none;
-            gap: 20px;
-        }
+        .main-content { display: none; gap: 20px; }
+        .main-content.active { display: grid; grid-template-columns: 1fr 1fr; }
 
-        .main-content.active {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-        }
-
-        /* Lead Card */
         .lead-card {
             background: white;
             border-radius: 12px;
@@ -179,11 +147,7 @@
             border-bottom: 1px solid #e2e8f0;
         }
 
-        .lead-name {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a365d;
-        }
+        .lead-name { font-size: 24px; font-weight: 600; color: #1a365d; }
 
         .lead-role {
             display: inline-block;
@@ -202,54 +166,16 @@
         .lead-role.head-of-sales { background: #d1fae5; color: #065f46; }
         .lead-role.sales-enablement { background: #ede9fe; color: #5b21b6; }
 
-        .lead-counter {
-            text-align: right;
-            color: #718096;
-            font-size: 14px;
-        }
+        .lead-counter { text-align: right; color: #718096; font-size: 14px; }
+        .lead-counter strong { font-size: 18px; color: #2d3748; }
 
-        .lead-counter strong {
-            font-size: 18px;
-            color: #2d3748;
-        }
-
-        .lead-details {
-            display: grid;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .lead-detail {
-            display: flex;
-            align-items: flex-start;
-        }
-
-        .lead-detail-label {
-            width: 120px;
-            color: #718096;
-            font-size: 13px;
-            flex-shrink: 0;
-        }
-
-        .lead-detail-value {
-            color: #2d3748;
-            font-weight: 500;
-        }
-
-        .lead-detail-value.phone {
-            font-size: 18px;
-            color: #2b6cb0;
-            font-family: 'Monaco', 'Consolas', monospace;
-        }
-
-        .lead-detail-value a {
-            color: #4299e1;
-            text-decoration: none;
-        }
-
-        .lead-detail-value a:hover {
-            text-decoration: underline;
-        }
+        .lead-details { display: grid; gap: 12px; margin-bottom: 20px; }
+        .lead-detail { display: flex; align-items: flex-start; }
+        .lead-detail-label { width: 120px; color: #718096; font-size: 13px; flex-shrink: 0; }
+        .lead-detail-value { color: #2d3748; font-weight: 500; }
+        .lead-detail-value.phone { font-size: 18px; color: #2b6cb0; font-family: 'Monaco', 'Consolas', monospace; }
+        .lead-detail-value a { color: #4299e1; text-decoration: none; }
+        .lead-detail-value a:hover { text-decoration: underline; }
 
         .qualifying-signals {
             background: #f7fafc;
@@ -260,66 +186,33 @@
             color: #4a5568;
         }
 
-        /* Call History */
-        .call-history {
+        .previous-notes {
             margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
+            padding: 16px;
+            background: #fffbeb;
+            border-radius: 8px;
+            border-left: 4px solid #f59e0b;
         }
 
-        .call-history h4 {
-            color: #4a5568;
-            font-size: 14px;
-            margin-bottom: 12px;
-        }
-
-        .call-history-list {
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .call-history-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            background: #f7fafc;
-            border-radius: 6px;
-            margin-bottom: 6px;
+        .previous-notes h4 {
+            color: #92400e;
             font-size: 13px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
         }
 
-        .call-history-item.answered {
-            border-left: 3px solid #48bb78;
+        .previous-notes p {
+            color: #78350f;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
-        .call-history-item.no-answer {
-            border-left: 3px solid #ed8936;
-        }
-
-        .call-history-item.didnt-ring {
-            border-left: 3px solid #f56565;
-        }
-
-        .call-history-date {
-            color: #718096;
+        .previous-notes .note-date {
             font-size: 12px;
+            color: #b45309;
+            margin-top: 8px;
         }
 
-        .call-history-status {
-            font-weight: 500;
-        }
-
-        .call-history-notes {
-            color: #4a5568;
-            font-style: italic;
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Call Actions */
         .call-actions {
             display: flex;
             gap: 12px;
@@ -343,43 +236,13 @@
             gap: 6px;
         }
 
-        .call-action-btn .icon {
-            font-size: 24px;
-        }
+        .call-action-btn .icon { font-size: 24px; }
+        .call-action-btn.answered { background: #c6f6d5; color: #22543d; }
+        .call-action-btn.answered:hover { background: #9ae6b4; }
+        .call-action-btn.no-answer { background: #feebc8; color: #7b341e; }
+        .call-action-btn.no-answer:hover { background: #fbd38d; }
 
-        .call-action-btn.answered {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .call-action-btn.answered:hover {
-            background: #9ae6b4;
-        }
-
-        .call-action-btn.no-answer {
-            background: #feebc8;
-            color: #7b341e;
-        }
-
-        .call-action-btn.no-answer:hover {
-            background: #fbd38d;
-        }
-
-        .call-action-btn.didnt-ring {
-            background: #fed7d7;
-            color: #742a2a;
-        }
-
-        .call-action-btn.didnt-ring:hover {
-            background: #feb2b2;
-        }
-
-        /* Navigation */
-        .lead-navigation {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
+        .lead-navigation { display: flex; gap: 10px; margin-top: 15px; }
 
         .nav-btn {
             padding: 10px 20px;
@@ -392,16 +255,9 @@
             transition: all 0.2s;
         }
 
-        .nav-btn:hover:not(:disabled) {
-            background: #e2e8f0;
-        }
+        .nav-btn:hover:not(:disabled) { background: #e2e8f0; }
+        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .nav-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Script Panel */
         .script-panel {
             background: white;
             border-radius: 12px;
@@ -416,14 +272,8 @@
             margin-bottom: 20px;
         }
 
-        .script-header h3 {
-            color: #1a365d;
-            font-size: 18px;
-        }
-
-        .script-section {
-            margin-bottom: 20px;
-        }
+        .script-header h3 { color: #1a365d; font-size: 18px; }
+        .script-section { margin-bottom: 20px; }
 
         .script-section-header {
             display: flex;
@@ -460,7 +310,6 @@
             border-left: 3px solid #4299e1;
         }
 
-        /* Filters */
         .filters-bar {
             background: white;
             border-radius: 12px;
@@ -470,28 +319,10 @@
             display: none;
         }
 
-        .filters-bar.active {
-            display: block;
-        }
-
-        .filters-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .filter-group label {
-            font-size: 13px;
-            color: #718096;
-            font-weight: 500;
-        }
+        .filters-bar.active { display: block; }
+        .filters-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-group label { font-size: 13px; color: #718096; font-weight: 500; }
 
         .filter-checkbox {
             display: flex;
@@ -505,17 +336,10 @@
             transition: all 0.2s;
         }
 
-        .filter-checkbox:hover {
-            background: #e2e8f0;
-        }
-
-        .filter-checkbox input {
-            cursor: pointer;
-        }
-
+        .filter-checkbox:hover { background: #e2e8f0; }
+        .filter-checkbox input { cursor: pointer; }
         .filter-checkbox.answered { background: #c6f6d5; }
         .filter-checkbox.no-answer { background: #feebc8; }
-        .filter-checkbox.didnt-ring { background: #fed7d7; }
         .filter-checkbox.not-called { background: #e2e8f0; }
 
         .filter-select {
@@ -527,7 +351,6 @@
             cursor: pointer;
         }
 
-        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -541,9 +364,7 @@
             z-index: 1000;
         }
 
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
 
         .modal {
             background: white;
@@ -563,10 +384,7 @@
             align-items: center;
         }
 
-        .modal-header h3 {
-            color: #1a365d;
-            font-size: 18px;
-        }
+        .modal-header h3 { color: #1a365d; font-size: 18px; }
 
         .modal-close {
             background: none;
@@ -577,13 +395,8 @@
             padding: 5px;
         }
 
-        .modal-close:hover {
-            color: #2d3748;
-        }
-
-        .modal-body {
-            padding: 24px;
-        }
+        .modal-close:hover { color: #2d3748; }
+        .modal-body { padding: 24px; }
 
         .modal-footer {
             padding: 16px 24px;
@@ -593,7 +406,6 @@
             gap: 12px;
         }
 
-        /* Notes Modal */
         .notes-textarea {
             width: 100%;
             min-height: 150px;
@@ -612,17 +424,8 @@
             box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
         }
 
-        .script-snapshot {
-            background: #f7fafc;
-            border-radius: 8px;
-            padding: 16px;
-        }
-
-        .script-snapshot h4 {
-            color: #4a5568;
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
+        .script-snapshot { background: #f7fafc; border-radius: 8px; padding: 16px; }
+        .script-snapshot h4 { color: #4a5568; font-size: 13px; margin-bottom: 12px; }
 
         .script-snapshot-item {
             display: flex;
@@ -632,23 +435,12 @@
             border-bottom: 1px solid #e2e8f0;
         }
 
-        .script-snapshot-item:last-child {
-            border-bottom: none;
-        }
+        .script-snapshot-item:last-child { border-bottom: none; }
+        .script-snapshot-section { color: #718096; }
+        .script-snapshot-version { color: #2d3748; font-weight: 500; }
 
-        .script-snapshot-section {
-            color: #718096;
-        }
-
-        .script-snapshot-version {
-            color: #2d3748;
-            font-weight: 500;
-        }
-
-        /* Script Editor Modal */
-        .editor-modal {
-            max-width: 900px;
-        }
+        .editor-modal { max-width: 900px; }
+        .history-modal { max-width: 800px; }
 
         .editor-tabs {
             display: flex;
@@ -669,14 +461,8 @@
             transition: all 0.2s;
         }
 
-        .editor-tab:hover {
-            background: #e2e8f0;
-        }
-
-        .editor-tab.active {
-            background: #4299e1;
-            color: white;
-        }
+        .editor-tab:hover { background: #e2e8f0; }
+        .editor-tab.active { background: #4299e1; color: white; }
 
         .editor-section {
             margin-bottom: 24px;
@@ -694,15 +480,8 @@
             border-bottom: 1px solid #e2e8f0;
         }
 
-        .editor-section-title {
-            font-weight: 600;
-            color: #2d3748;
-        }
-
-        .editor-section-actions {
-            display: flex;
-            gap: 8px;
-        }
+        .editor-section-title { font-weight: 600; color: #2d3748; }
+        .editor-section-actions { display: flex; gap: 8px; }
 
         .editor-version-tabs {
             display: flex;
@@ -722,25 +501,11 @@
             transition: all 0.2s;
         }
 
-        .editor-version-tab:hover {
-            border-color: #4299e1;
-        }
+        .editor-version-tab:hover { border-color: #4299e1; }
+        .editor-version-tab.active { background: #4299e1; color: white; border-color: #4299e1; }
+        .editor-version-tab .delete-version { margin-left: 6px; color: #f56565; font-weight: bold; }
 
-        .editor-version-tab.active {
-            background: #4299e1;
-            color: white;
-            border-color: #4299e1;
-        }
-
-        .editor-version-tab .delete-version {
-            margin-left: 6px;
-            color: #f56565;
-            font-weight: bold;
-        }
-
-        .editor-content {
-            padding: 16px;
-        }
+        .editor-content { padding: 16px; }
 
         .editor-content textarea {
             width: 100%;
@@ -753,16 +518,9 @@
             resize: vertical;
         }
 
-        .editor-content textarea:focus {
-            outline: none;
-            border-color: #4299e1;
-        }
+        .editor-content textarea:focus { outline: none; border-color: #4299e1; }
 
-        .editor-version-name {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
+        .editor-version-name { display: flex; gap: 8px; margin-bottom: 10px; }
 
         .editor-version-name input {
             flex: 1;
@@ -791,9 +549,7 @@
             font-size: 12px;
         }
 
-        .add-version-btn:hover {
-            background: #38a169;
-        }
+        .add-version-btn:hover { background: #38a169; }
 
         .delete-btn {
             padding: 6px 12px;
@@ -805,90 +561,132 @@
             font-size: 12px;
         }
 
-        .delete-btn:hover {
-            background: #e53e3e;
-        }
+        .delete-btn:hover { background: #e53e3e; }
 
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px;
-            color: #718096;
-        }
+        .rep-manager { margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0; }
+        .rep-manager h4 { color: #1a365d; margin-bottom: 15px; font-size: 16px; }
 
-        .empty-state h3 {
-            margin-bottom: 10px;
-            color: #4a5568;
-        }
+        .rep-list { margin-bottom: 15px; }
 
-        /* Keyboard hints */
-        .keyboard-hints {
+        .rep-item {
             display: flex;
-            gap: 15px;
-            font-size: 12px;
-            color: #718096;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f7fafc;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .rep-item span { font-weight: 500; }
+
+        .add-rep-form { display: flex; gap: 10px; }
+
+        .add-rep-form input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .history-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+
+        .history-tab {
+            padding: 10px 20px;
+            background: #edf2f7;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .history-tab:hover { background: #e2e8f0; }
+        .history-tab.active { background: #4299e1; color: white; }
+        .history-tab.answered { background: #c6f6d5; color: #22543d; }
+        .history-tab.answered.active { background: #48bb78; color: white; }
+        .history-tab.no-answer { background: #feebc8; color: #7b341e; }
+        .history-tab.no-answer.active { background: #ed8936; color: white; }
+        .history-tab.not-called { background: #e2e8f0; color: #4a5568; }
+        .history-tab.not-called.active { background: #718096; color: white; }
+
+        .history-list { max-height: 400px; overflow-y: auto; }
+
+        .history-item {
+            padding: 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #cbd5e0;
+        }
+
+        .history-item.answered { border-left-color: #48bb78; }
+        .history-item.no-answer { border-left-color: #ed8936; }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .history-item-name { font-weight: 600; color: #1a365d; }
+        .history-item-company { color: #718096; font-size: 13px; }
+        .history-item-date { color: #718096; font-size: 12px; }
+        .history-item-phone { font-family: monospace; color: #2b6cb0; margin: 8px 0; }
+
+        .history-item-notes {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #4a5568;
             margin-top: 10px;
         }
 
-        .keyboard-hint kbd {
-            background: #edf2f7;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
+        .history-item-notes strong { display: block; margin-bottom: 5px; color: #2d3748; }
 
-        /* Responsive */
+        .keyboard-hints { display: flex; gap: 15px; font-size: 12px; color: #718096; margin-top: 10px; }
+        .keyboard-hint kbd { background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+
         @media (max-width: 1024px) {
-            .main-content.active {
-                grid-template-columns: 1fr;
-            }
+            .main-content.active { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <h1>Hive Perform - Cold Call Scripts</h1>
             <div class="header-actions">
-                <button class="btn btn-success" id="pushToggleBtn" style="display: none;">
-                    🔔 Push ON
-                </button>
-                <button class="btn btn-secondary" id="editScriptsBtn" style="display: none;">
-                    ✎ Edit Scripts
-                </button>
-                <button class="btn btn-secondary" id="exportBtn" style="display: none;">
-                    ⬇ Export Results CSV
-                </button>
-                <button class="btn btn-secondary" id="newUploadBtn" style="display: none;">
-                    ↑ Upload New CSV
-                </button>
+                <div class="rep-selector" id="repSelectorContainer" style="display: none;">
+                    <label>Rep:</label>
+                    <select id="repSelector"></select>
+                </div>
+                <button class="btn btn-success" id="pushToggleBtn" style="display: none;">🔔 Push ON</button>
+                <button class="btn btn-secondary" id="historyBtn" style="display: none;">📋 History</button>
+                <button class="btn btn-secondary" id="editBtn" style="display: none;">⚙ Settings</button>
+                <button class="btn btn-secondary" id="exportBtn" style="display: none;">⬇ Export CSV</button>
+                <button class="btn btn-secondary" id="newUploadBtn" style="display: none;">↑ New CSV</button>
             </div>
         </header>
 
-        <!-- Upload Section -->
         <section class="upload-section" id="uploadSection">
             <h2>Upload Your Leads CSV</h2>
             <p>Import your leads to get started. Expected columns: Company, Phone, Contact name, Role, etc.</p>
-            <label class="upload-label" for="csvUpload">
-                Choose CSV File
-            </label>
+            <label class="upload-label" for="csvUpload">Choose CSV File</label>
             <input type="file" id="csvUpload" accept=".csv">
         </section>
 
-        <!-- Filters Bar -->
         <section class="filters-bar" id="filtersBar">
             <div class="filters-row">
                 <div class="filter-group">
                     <label>Status:</label>
                     <label class="filter-checkbox answered">
-                        <input type="checkbox" id="filterAnswered" checked> Answered
+                        <input type="checkbox" id="filterAnswered"> Answered
                     </label>
                     <label class="filter-checkbox no-answer">
-                        <input type="checkbox" id="filterNoAnswer" checked> No Answer
-                    </label>
-                    <label class="filter-checkbox didnt-ring">
-                        <input type="checkbox" id="filterDidntRing" checked> Didn't Ring
+                        <input type="checkbox" id="filterNoAnswer"> No Answer
                     </label>
                     <label class="filter-checkbox not-called">
                         <input type="checkbox" id="filterNotCalled" checked> Not Called
@@ -916,9 +714,7 @@
             </div>
         </section>
 
-        <!-- Main Content -->
         <main class="main-content" id="mainContent">
-            <!-- Lead Card -->
             <div class="lead-card">
                 <div class="lead-header">
                     <div>
@@ -958,11 +754,10 @@
                     <div class="qualifying-signals" id="leadSignals">-</div>
                 </div>
 
-                <div class="call-history" id="callHistorySection">
-                    <h4>Call History</h4>
-                    <div class="call-history-list" id="callHistoryList">
-                        <div class="empty-state" style="padding: 20px;">No calls yet</div>
-                    </div>
+                <div class="previous-notes" id="previousNotesSection" style="display: none;">
+                    <h4>Previous Call Notes</h4>
+                    <p id="previousNotesContent"></p>
+                    <div class="note-date" id="previousNotesDate"></div>
                 </div>
 
                 <div class="call-actions">
@@ -972,11 +767,7 @@
                     </button>
                     <button class="call-action-btn no-answer" id="btnNoAnswer">
                         <span class="icon">○</span>
-                        Rang - No Answer
-                    </button>
-                    <button class="call-action-btn didnt-ring" id="btnDidntRing">
-                        <span class="icon">✕</span>
-                        Didn't Ring
+                        No Answer
                     </button>
                 </div>
 
@@ -986,20 +777,15 @@
                         <span class="keyboard-hint"><kbd>←</kbd> Previous</span>
                         <span class="keyboard-hint"><kbd>1</kbd> Answered</span>
                         <span class="keyboard-hint"><kbd>2</kbd> No Answer</span>
-                        <span class="keyboard-hint"><kbd>3</kbd> Didn't Ring</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Script Panel -->
             <div class="script-panel">
                 <div class="script-header">
                     <h3>Script: <span id="scriptRoleTitle">-</span></h3>
                 </div>
-
-                <div id="scriptSections">
-                    <!-- Script sections will be rendered here -->
-                </div>
+                <div id="scriptSections"></div>
             </div>
         </main>
     </div>
@@ -1008,44 +794,42 @@
     <div class="modal-overlay" id="notesModal">
         <div class="modal">
             <div class="modal-header">
-                <h3>Call Notes</h3>
+                <h3 id="notesModalTitle">Call Notes</h3>
                 <button class="modal-close" id="closeNotesModal">&times;</button>
             </div>
             <div class="modal-body">
-                <textarea class="notes-textarea" id="callNotes" placeholder="Enter your conversation notes here..."></textarea>
-
-                <div class="script-snapshot">
+                <textarea class="notes-textarea" id="callNotes" placeholder="Enter notes here... (Press Enter to save)"></textarea>
+                <div class="script-snapshot" id="scriptSnapshotSection">
                     <h4>Script Versions Used</h4>
-                    <div id="scriptSnapshotContent">
-                        <!-- Script snapshot will be rendered here -->
-                    </div>
+                    <div id="scriptSnapshotContent"></div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="cancelNotes">Cancel</button>
-                <button class="btn btn-success" id="saveNotes">Save & Continue</button>
+                <button class="btn btn-success" id="saveNotes">Save & Continue (Enter)</button>
             </div>
         </div>
     </div>
 
-    <!-- Script Editor Modal -->
+    <!-- Settings Modal (formerly Script Editor) -->
     <div class="modal-overlay" id="editorModal">
         <div class="modal editor-modal">
             <div class="modal-header">
-                <h3>Script Editor</h3>
+                <h3>Settings</h3>
                 <button class="modal-close" id="closeEditorModal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="editor-stats" id="editorStats">
-                    Total calls answered: <strong>0</strong>
-                </div>
+                <div class="editor-stats" id="editorStats">Total calls answered: <strong>0</strong></div>
+                <div class="editor-tabs" id="editorTabs"></div>
+                <div id="editorContent"></div>
 
-                <div class="editor-tabs" id="editorTabs">
-                    <!-- Role tabs will be rendered here -->
-                </div>
-
-                <div id="editorContent">
-                    <!-- Editor sections will be rendered here -->
+                <div class="rep-manager">
+                    <h4>Sales Reps</h4>
+                    <div class="rep-list" id="repList"></div>
+                    <div class="add-rep-form">
+                        <input type="text" id="newRepName" placeholder="Enter rep name...">
+                        <button class="btn btn-success" id="addRepBtn">Add Rep</button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1055,38 +839,57 @@
         </div>
     </div>
 
+    <!-- History Modal -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal history-modal">
+            <div class="modal-header">
+                <h3>Call History</h3>
+                <button class="modal-close" id="closeHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="history-tabs" id="historyTabs">
+                    <button class="history-tab answered active" data-status="answered">Answered</button>
+                    <button class="history-tab no-answer" data-status="no_answer">No Answer</button>
+                    <button class="history-tab not-called" data-status="not_called">Not Called</button>
+                </div>
+                <div class="history-list" id="historyList"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================
-        // STATE MANAGEMENT
+        // STATE
         // ============================================
         let state = {
             leads: [],
             filteredLeads: [],
             currentIndex: 0,
             scripts: getDefaultScripts(),
-            callHistory: {}, // leadId -> [{ date, time, status, notes, scriptSnapshot }]
-            selectedVersions: {}, // roleCategory -> { sectionName: versionIndex }
+            callHistory: {},
+            selectedVersions: {},
             filters: {
-                answered: true,
-                noAnswer: true,
-                didntRing: true,
+                answered: false,
+                noAnswer: false,
                 notCalled: true,
                 role: 'all',
                 region: 'all'
             },
             editorState: {
                 activeRole: 'CEO_FOUNDER',
-                activeVersions: {} // sectionName -> versionIndex
+                activeVersions: {}
             },
-            pushNotifications: true, // Enable/disable push notifications
-            lastNotifiedLeadId: null // Track last notified lead to avoid duplicates
+            pushNotifications: true,
+            lastNotifiedLeadId: null,
+            reps: ['Default Rep'],
+            currentRep: 'Default Rep',
+            historyTab: 'answered',
+            isFirstLoad: true
         };
 
-        // Ntfy configuration
         const NTFY_TOPIC = 'cold-calling-hiveperform';
         const NTFY_URL = `https://ntfy.sh/${NTFY_TOPIC}`;
 
-        // Default scripts for each role
         function getDefaultScripts() {
             return {
                 CEO_FOUNDER: {
@@ -1181,165 +984,100 @@
         }
 
         // ============================================
-        // UTILITY FUNCTIONS
+        // UTILITIES
         // ============================================
-
         function generateLeadId(lead) {
             return `${lead.company}-${lead.contactName}-${lead.phone}`.replace(/[^a-zA-Z0-9]/g, '_');
         }
 
         function categorizeRole(role) {
-            if (!role) return 'OTHER';
+            if (!role) return 'HEAD_OF_SALES';
             const r = role.toLowerCase();
-            if (r.includes('ceo') || r.includes('founder') || r.includes('co-founder') || r.includes('chief executive')) {
-                return 'CEO_FOUNDER';
-            }
-            if (r.includes('cro') || r.includes('chief revenue')) {
-                return 'CRO';
-            }
-            if (r.includes('head of sales') || r.includes('vp of sales') || r.includes('vp sales') ||
-                r.includes('sales director') || r.includes('director of sales') || r.includes('global head')) {
-                return 'HEAD_OF_SALES';
-            }
-            if (r.includes('enablement') || r.includes('revops') || r.includes('revenue operations')) {
-                return 'SALES_ENABLEMENT';
-            }
-            return 'HEAD_OF_SALES'; // Default fallback
+            if (r.includes('ceo') || r.includes('founder') || r.includes('co-founder') || r.includes('chief executive')) return 'CEO_FOUNDER';
+            if (r.includes('cro') || r.includes('chief revenue')) return 'CRO';
+            if (r.includes('head of sales') || r.includes('vp of sales') || r.includes('vp sales') || r.includes('sales director') || r.includes('director of sales') || r.includes('global head')) return 'HEAD_OF_SALES';
+            if (r.includes('enablement') || r.includes('revops') || r.includes('revenue operations')) return 'SALES_ENABLEMENT';
+            return 'HEAD_OF_SALES';
         }
 
         function getRoleCategoryLabel(category) {
-            const labels = {
-                'CEO_FOUNDER': 'CEO / Founder',
-                'CRO': 'CRO',
-                'HEAD_OF_SALES': 'Head of Sales',
-                'SALES_ENABLEMENT': 'Sales Enablement',
-                'OTHER': 'Other'
-            };
+            const labels = { 'CEO_FOUNDER': 'CEO / Founder', 'CRO': 'CRO', 'HEAD_OF_SALES': 'Head of Sales', 'SALES_ENABLEMENT': 'Sales Enablement' };
             return labels[category] || category;
         }
 
         function getRoleCategoryClass(category) {
-            const classes = {
-                'CEO_FOUNDER': 'ceo',
-                'CRO': 'cro',
-                'HEAD_OF_SALES': 'head-of-sales',
-                'SALES_ENABLEMENT': 'sales-enablement'
-            };
+            const classes = { 'CEO_FOUNDER': 'ceo', 'CRO': 'cro', 'HEAD_OF_SALES': 'head-of-sales', 'SALES_ENABLEMENT': 'sales-enablement' };
             return classes[category] || '';
         }
 
-        function detectRegion(phone) {
+        function detectRegionFromPhone(phone) {
             if (!phone) return 'OTHER';
-            const p = phone.toString().replace(/[^0-9+]/g, '');
-            if (p.startsWith('+44') || p.startsWith('44') || p.startsWith('0')) {
-                return 'UK';
-            }
-            if (p.startsWith('+1') || p.startsWith('1')) {
-                return 'US';
-            }
+            const p = formatPhone(phone);
+            if (p.startsWith('+44')) return 'UK';
+            if (p.startsWith('+1')) return 'US';
             return 'OTHER';
+        }
+
+        function getLocationFromPhone(phone) {
+            const region = detectRegionFromPhone(phone);
+            if (region === 'UK') return 'UK';
+            if (region === 'US') return 'US';
+            return 'Other';
         }
 
         function getLeadStatus(leadId) {
             const history = state.callHistory[leadId];
             if (!history || history.length === 0) return 'not_called';
-            const lastCall = history[history.length - 1];
-            return lastCall.status;
+            return history[history.length - 1].status;
         }
 
         function formatDate(date) {
-            return new Date(date).toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
         function formatPhone(phone) {
             if (!phone) return '-';
-
             let p = phone.toString();
-
-            // Handle scientific notation (e.g., 4.42073E+11 from Excel)
             if (p.includes('E+') || p.includes('e+')) {
-                try {
-                    p = BigInt(Math.round(parseFloat(p))).toString();
-                } catch (e) {
-                    p = Math.round(parseFloat(p)).toString();
-                }
+                try { p = BigInt(Math.round(parseFloat(p))).toString(); }
+                catch (e) { p = Math.round(parseFloat(p)).toString(); }
             }
-
-            // Remove any existing formatting (spaces, dashes, parentheses)
             let cleaned = p.replace(/[\s\-\(\)\.]/g, '');
-
-            // Ensure it starts with +
             if (!cleaned.startsWith('+')) {
-                // If it starts with 00, replace with +
-                if (cleaned.startsWith('00')) {
-                    cleaned = '+' + cleaned.substring(2);
-                }
-                // If it starts with 44 (UK), add +
-                else if (cleaned.startsWith('44')) {
-                    cleaned = '+' + cleaned;
-                }
-                // If it starts with 1 and is 11 digits (US), add +
-                else if (cleaned.startsWith('1') && cleaned.length === 11) {
-                    cleaned = '+' + cleaned;
-                }
-                // If it starts with 0 (UK local), convert to +44
-                else if (cleaned.startsWith('0') && cleaned.length >= 10) {
-                    cleaned = '+44' + cleaned.substring(1);
-                }
-                // Otherwise just add + prefix
-                else {
-                    cleaned = '+' + cleaned;
-                }
+                if (cleaned.startsWith('00')) cleaned = '+' + cleaned.substring(2);
+                else if (cleaned.startsWith('44')) cleaned = '+' + cleaned;
+                else if (cleaned.startsWith('1') && cleaned.length === 11) cleaned = '+' + cleaned;
+                else if (cleaned.startsWith('0') && cleaned.length >= 10) cleaned = '+44' + cleaned.substring(1);
+                else cleaned = '+' + cleaned;
             }
-
             return cleaned;
         }
 
         // ============================================
-        // PUSH NOTIFICATIONS (Ntfy)
+        // PUSH NOTIFICATIONS
         // ============================================
-
         async function sendPhoneNotification(lead) {
             if (!state.pushNotifications) return;
-
             const leadId = generateLeadId(lead);
-
-            // Don't send duplicate notifications for the same lead
             if (state.lastNotifiedLeadId === leadId) return;
             state.lastNotifiedLeadId = leadId;
-
             const phone = formatPhone(lead.phone);
             if (!phone || phone === '-') return;
-
             try {
                 await fetch(NTFY_URL, {
                     method: 'POST',
-                    headers: {
-                        'Title': `${lead.contactName || 'Unknown'} - ${lead.company || 'Unknown'}`,
-                        'Tags': 'phone,outbox'
-                    },
+                    headers: { 'Title': `${lead.contactName || 'Unknown'} - ${lead.company || 'Unknown'}`, 'Tags': 'phone,outbox' },
                     body: phone
                 });
-                console.log('Phone notification sent:', phone);
-            } catch (error) {
-                console.error('Failed to send notification:', error);
-            }
+            } catch (error) { console.error('Failed to send notification:', error); }
         }
 
         function togglePushNotifications() {
             state.pushNotifications = !state.pushNotifications;
             updatePushToggleUI();
             saveState();
-
-            // If just enabled, send notification for current lead
             if (state.pushNotifications && state.filteredLeads.length > 0) {
-                state.lastNotifiedLeadId = null; // Reset to allow sending
+                state.lastNotifiedLeadId = null;
                 sendPhoneNotification(state.filteredLeads[state.currentIndex]);
             }
         }
@@ -1353,25 +1091,20 @@
         }
 
         // ============================================
-        // CSV PARSING
+        // CSV
         // ============================================
-
         function parseCSV(text) {
             const lines = text.split('\n');
             const headers = parseCSVLine(lines[0]);
             const leads = [];
-
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 const values = parseCSVLine(lines[i]);
                 const lead = {};
-
                 headers.forEach((header, index) => {
                     const key = header.toLowerCase().replace(/[^a-z0-9]/g, '');
                     lead[key] = values[index] || '';
                 });
-
-                // Map to standard fields
                 leads.push({
                     company: lead.company || '',
                     location: lead.location || '',
@@ -1386,7 +1119,6 @@
                     originalData: lead
                 });
             }
-
             return leads;
         }
 
@@ -1394,17 +1126,11 @@
             const result = [];
             let current = '';
             let inQuotes = false;
-
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+                else current += char;
             }
             result.push(current.trim());
             return result;
@@ -1413,90 +1139,57 @@
         // ============================================
         // FILTERING
         // ============================================
-
         function applyFilters() {
             state.filteredLeads = state.leads.filter(lead => {
                 const leadId = generateLeadId(lead);
                 const status = getLeadStatus(leadId);
                 const roleCategory = categorizeRole(lead.role);
-                const region = detectRegion(lead.phone);
-
-                // Status filters
+                const region = detectRegionFromPhone(lead.phone);
                 if (status === 'answered' && !state.filters.answered) return false;
                 if (status === 'no_answer' && !state.filters.noAnswer) return false;
-                if (status === 'didnt_ring' && !state.filters.didntRing) return false;
                 if (status === 'not_called' && !state.filters.notCalled) return false;
-
-                // Role filter
                 if (state.filters.role !== 'all' && roleCategory !== state.filters.role) return false;
-
-                // Region filter
                 if (state.filters.region !== 'all' && region !== state.filters.region) return false;
-
                 return true;
             });
-
-            // Adjust current index if needed
             if (state.currentIndex >= state.filteredLeads.length) {
                 state.currentIndex = Math.max(0, state.filteredLeads.length - 1);
             }
-
             updateUI();
         }
 
         // ============================================
-        // UI RENDERING
+        // UI
         // ============================================
-
         function updateUI() {
-            if (state.filteredLeads.length === 0) {
-                renderEmptyState();
-                return;
-            }
-
+            if (state.filteredLeads.length === 0) { renderEmptyState(); return; }
             const lead = state.filteredLeads[state.currentIndex];
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
 
-            // Update lead info
             document.getElementById('leadName').textContent = lead.contactName || 'Unknown';
             document.getElementById('leadCompany').textContent = lead.company || '-';
             document.getElementById('leadPhone').textContent = formatPhone(lead.phone);
-            document.getElementById('leadLocation').textContent = lead.location || '-';
+            document.getElementById('leadLocation').textContent = getLocationFromPhone(lead.phone);
             document.getElementById('leadVertical').textContent = lead.vertical || '-';
             document.getElementById('leadSignals').textContent = lead.qualifyingSignals || 'No signals available';
 
-            // LinkedIn
             const linkedInEl = document.getElementById('leadLinkedIn');
-            if (lead.linkedInUrl) {
-                linkedInEl.innerHTML = `<a href="${lead.linkedInUrl}" target="_blank">View Profile</a>`;
-            } else {
-                linkedInEl.textContent = '-';
-            }
+            if (lead.linkedInUrl) linkedInEl.innerHTML = `<a href="${lead.linkedInUrl}" target="_blank">View Profile</a>`;
+            else linkedInEl.textContent = '-';
 
-            // Role badge
             const roleEl = document.getElementById('leadRole');
             roleEl.textContent = getRoleCategoryLabel(roleCategory);
             roleEl.className = 'lead-role ' + getRoleCategoryClass(roleCategory);
 
-            // Counter
             document.getElementById('currentLeadNum').textContent = state.currentIndex + 1;
             document.getElementById('totalLeads').textContent = state.leads.length;
             document.getElementById('filteredCount').textContent = `(${state.filteredLeads.length} shown)`;
-
-            // Navigation
             document.getElementById('prevBtn').disabled = state.currentIndex === 0;
 
-            // Call history
-            renderCallHistory(leadId);
-
-            // Scripts
-            renderScripts(roleCategory);
-
-            // Script title
+            renderPreviousNotes(leadId);
+            renderScripts(roleCategory, lead);
             document.getElementById('scriptRoleTitle').textContent = getRoleCategoryLabel(roleCategory);
-
-            // Send push notification with phone number
             sendPhoneNotification(lead);
         }
 
@@ -1511,33 +1204,21 @@
             document.getElementById('leadRole').textContent = '-';
             document.getElementById('currentLeadNum').textContent = '0';
             document.getElementById('filteredCount').textContent = '(0 shown)';
+            document.getElementById('previousNotesSection').style.display = 'none';
         }
 
-        function renderCallHistory(leadId) {
+        function renderPreviousNotes(leadId) {
             const history = state.callHistory[leadId] || [];
-            const container = document.getElementById('callHistoryList');
-
-            if (history.length === 0) {
-                container.innerHTML = '<div class="empty-state" style="padding: 20px;">No calls yet</div>';
-                return;
-            }
-
-            container.innerHTML = history.map(call => {
-                const statusClass = call.status === 'answered' ? 'answered' :
-                                   call.status === 'no_answer' ? 'no-answer' : 'didnt-ring';
-                const statusLabel = call.status === 'answered' ? 'Answered' :
-                                   call.status === 'no_answer' ? 'No Answer' : "Didn't Ring";
-                return `
-                    <div class="call-history-item ${statusClass}">
-                        <span class="call-history-date">${formatDate(call.date)}</span>
-                        <span class="call-history-status">${statusLabel}</span>
-                        ${call.notes ? `<span class="call-history-notes">${call.notes}</span>` : ''}
-                    </div>
-                `;
-            }).reverse().join('');
+            const section = document.getElementById('previousNotesSection');
+            const notesWithContent = history.filter(h => h.notes && h.notes.trim());
+            if (notesWithContent.length === 0) { section.style.display = 'none'; return; }
+            const lastNote = notesWithContent[notesWithContent.length - 1];
+            document.getElementById('previousNotesContent').textContent = lastNote.notes;
+            document.getElementById('previousNotesDate').textContent = formatDate(lastNote.date) + ' - ' + (lastNote.status === 'answered' ? 'Answered' : 'No Answer');
+            section.style.display = 'block';
         }
 
-        function renderScripts(roleCategory) {
+        function renderScripts(roleCategory, lead) {
             const scripts = state.scripts[roleCategory] || state.scripts['HEAD_OF_SALES'];
             const selectedVersions = state.selectedVersions[roleCategory] || {};
             const sections = [
@@ -1553,32 +1234,32 @@
                 const versions = scripts[section.key] || [];
                 const selectedIndex = selectedVersions[section.key] || 0;
                 const currentVersion = versions[selectedIndex] || { name: 'Default', content: 'No content available' };
-
+                let content = currentVersion.content;
+                if (lead) {
+                    content = content.replace(/\[Name\]/g, lead.contactName || '[Name]');
+                    content = content.replace(/\[Your Name\]/g, state.currentRep || '[Your Name]');
+                    content = content.replace(/\[Vertical\]/g, lead.vertical || '[Vertical]');
+                }
                 return `
                     <div class="script-section">
                         <div class="script-section-header">
                             <span class="script-section-title">${section.title}</span>
                             <select class="script-version-select" data-section="${section.key}" data-role="${roleCategory}">
-                                ${versions.map((v, i) => `
-                                    <option value="${i}" ${i === selectedIndex ? 'selected' : ''}>${v.name}</option>
-                                `).join('')}
+                                ${versions.map((v, i) => `<option value="${i}" ${i === selectedIndex ? 'selected' : ''}>${v.name}</option>`).join('')}
                             </select>
                         </div>
-                        <div class="script-content">${currentVersion.content}</div>
+                        <div class="script-content">${content}</div>
                     </div>
                 `;
             }).join('');
 
-            // Add event listeners for version selects
             container.querySelectorAll('.script-version-select').forEach(select => {
                 select.addEventListener('change', (e) => {
                     const section = e.target.dataset.section;
                     const role = e.target.dataset.role;
-                    if (!state.selectedVersions[role]) {
-                        state.selectedVersions[role] = {};
-                    }
+                    if (!state.selectedVersions[role]) state.selectedVersions[role] = {};
                     state.selectedVersions[role][section] = parseInt(e.target.value);
-                    renderScripts(role);
+                    renderScripts(role, state.filteredLeads[state.currentIndex]);
                     saveState();
                 });
             });
@@ -1587,157 +1268,115 @@
         function getCurrentScriptSnapshot(roleCategory) {
             const scripts = state.scripts[roleCategory] || state.scripts['HEAD_OF_SALES'];
             const selectedVersions = state.selectedVersions[roleCategory] || {};
-            const sections = ['openingLine', 'painPoint', 'discoveryQuestions', 'ourSolution', 'valueStatement'];
-
-            return sections.map(section => {
+            return ['openingLine', 'painPoint', 'discoveryQuestions', 'ourSolution', 'valueStatement'].map(section => {
                 const versions = scripts[section] || [];
                 const selectedIndex = selectedVersions[section] || 0;
                 const version = versions[selectedIndex];
-                return {
-                    section,
-                    versionName: version ? version.name : 'Default',
-                    versionIndex: selectedIndex
-                };
+                return { section, versionName: version ? version.name : 'Default', versionIndex: selectedIndex };
             });
         }
 
         // ============================================
         // CALL ACTIONS
         // ============================================
-
         function recordCall(status) {
             if (state.filteredLeads.length === 0) return;
-
             const lead = state.filteredLeads[state.currentIndex];
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
-
-            if (status === 'answered') {
-                // Show notes modal
-                showNotesModal(leadId, roleCategory);
-            } else {
-                // Record directly and move to next
-                addCallRecord(leadId, status, '', roleCategory);
-                moveToNext();
-            }
+            showNotesModal(leadId, roleCategory, status);
         }
 
         function addCallRecord(leadId, status, notes, roleCategory) {
-            if (!state.callHistory[leadId]) {
-                state.callHistory[leadId] = [];
-            }
-
-            const record = {
+            if (!state.callHistory[leadId]) state.callHistory[leadId] = [];
+            state.callHistory[leadId].push({
                 date: new Date().toISOString(),
                 status,
                 notes,
-                scriptSnapshot: status === 'answered' ? getCurrentScriptSnapshot(roleCategory) : null
-            };
-
-            state.callHistory[leadId].push(record);
+                scriptSnapshot: status === 'answered' ? getCurrentScriptSnapshot(roleCategory) : null,
+                rep: state.currentRep
+            });
             saveState();
         }
 
         function moveToNext() {
-            applyFilters(); // Re-filter in case status changed
-
-            if (state.currentIndex < state.filteredLeads.length - 1) {
-                state.currentIndex++;
-            }
+            applyFilters();
+            if (state.currentIndex < state.filteredLeads.length - 1) state.currentIndex++;
             updateUI();
         }
 
         function moveToPrevious() {
-            if (state.currentIndex > 0) {
-                state.currentIndex--;
-                updateUI();
-            }
+            if (state.currentIndex > 0) { state.currentIndex--; updateUI(); }
         }
 
         // ============================================
         // NOTES MODAL
         // ============================================
-
-        function showNotesModal(leadId, roleCategory) {
+        function showNotesModal(leadId, roleCategory, status) {
             const modal = document.getElementById('notesModal');
             const textarea = document.getElementById('callNotes');
             const snapshotContainer = document.getElementById('scriptSnapshotContent');
+            const snapshotSection = document.getElementById('scriptSnapshotSection');
 
-            // Clear and focus
+            document.getElementById('notesModalTitle').textContent = status === 'answered' ? 'Call Notes - Answered' : 'Call Notes - No Answer';
             textarea.value = '';
 
-            // Render script snapshot
-            const snapshot = getCurrentScriptSnapshot(roleCategory);
-            const sectionLabels = {
-                openingLine: 'Opening Line',
-                painPoint: 'Pain Point',
-                discoveryQuestions: 'Discovery Questions',
-                ourSolution: 'Our Solution',
-                valueStatement: 'Value Statement'
-            };
+            if (status === 'answered') {
+                snapshotSection.style.display = 'block';
+                const snapshot = getCurrentScriptSnapshot(roleCategory);
+                const sectionLabels = { openingLine: 'Opening Line', painPoint: 'Pain Point', discoveryQuestions: 'Discovery Questions', ourSolution: 'Our Solution', valueStatement: 'Value Statement' };
+                snapshotContainer.innerHTML = snapshot.map(s => `
+                    <div class="script-snapshot-item">
+                        <span class="script-snapshot-section">${sectionLabels[s.section]}</span>
+                        <span class="script-snapshot-version">${s.versionName}</span>
+                    </div>
+                `).join('');
+            } else {
+                snapshotSection.style.display = 'none';
+            }
 
-            snapshotContainer.innerHTML = snapshot.map(s => `
-                <div class="script-snapshot-item">
-                    <span class="script-snapshot-section">${sectionLabels[s.section]}</span>
-                    <span class="script-snapshot-version">${s.versionName}</span>
-                </div>
-            `).join('');
-
-            // Store context for saving
             modal.dataset.leadId = leadId;
             modal.dataset.roleCategory = roleCategory;
-
-            // Show modal
+            modal.dataset.status = status;
             modal.classList.add('active');
             setTimeout(() => textarea.focus(), 100);
         }
 
-        function hideNotesModal() {
-            document.getElementById('notesModal').classList.remove('active');
-        }
+        function hideNotesModal() { document.getElementById('notesModal').classList.remove('active'); }
 
         function saveNotesAndContinue() {
             const modal = document.getElementById('notesModal');
             const notes = document.getElementById('callNotes').value;
             const leadId = modal.dataset.leadId;
             const roleCategory = modal.dataset.roleCategory;
-
-            addCallRecord(leadId, 'answered', notes, roleCategory);
+            const status = modal.dataset.status;
+            addCallRecord(leadId, status, notes, roleCategory);
             hideNotesModal();
             moveToNext();
         }
 
         // ============================================
-        // SCRIPT EDITOR
+        // SETTINGS/EDITOR
         // ============================================
-
-        function showScriptEditor() {
+        function showEditor() {
             const modal = document.getElementById('editorModal');
             state.editorState.activeRole = 'CEO_FOUNDER';
             state.editorState.activeVersions = {};
-
             renderEditorTabs();
             renderEditorContent();
+            renderRepList();
             updateEditorStats();
-
             modal.classList.add('active');
         }
 
-        function hideScriptEditor() {
-            document.getElementById('editorModal').classList.remove('active');
-        }
+        function hideEditor() { document.getElementById('editorModal').classList.remove('active'); }
 
         function renderEditorTabs() {
             const container = document.getElementById('editorTabs');
             const roles = ['CEO_FOUNDER', 'CRO', 'HEAD_OF_SALES', 'SALES_ENABLEMENT'];
-
             container.innerHTML = roles.map(role => `
-                <button class="editor-tab ${state.editorState.activeRole === role ? 'active' : ''}"
-                        data-role="${role}">
-                    ${getRoleCategoryLabel(role)}
-                </button>
+                <button class="editor-tab ${state.editorState.activeRole === role ? 'active' : ''}" data-role="${role}">${getRoleCategoryLabel(role)}</button>
             `).join('');
-
             container.querySelectorAll('.editor-tab').forEach(tab => {
                 tab.addEventListener('click', (e) => {
                     state.editorState.activeRole = e.target.dataset.role;
@@ -1752,7 +1391,6 @@
             const container = document.getElementById('editorContent');
             const role = state.editorState.activeRole;
             const scripts = state.scripts[role];
-
             const sections = [
                 { key: 'openingLine', title: 'Opening Line' },
                 { key: 'painPoint', title: 'Pain Point' },
@@ -1765,7 +1403,6 @@
                 const versions = scripts[section.key] || [];
                 const activeVersion = state.editorState.activeVersions[section.key] || 0;
                 const currentVersion = versions[activeVersion] || { name: '', content: '' };
-
                 return `
                     <div class="editor-section" data-section="${section.key}">
                         <div class="editor-section-header">
@@ -1776,17 +1413,14 @@
                         </div>
                         <div class="editor-version-tabs">
                             ${versions.map((v, i) => `
-                                <button class="editor-version-tab ${i === activeVersion ? 'active' : ''}"
-                                        data-section="${section.key}" data-index="${i}">
-                                    ${v.name}
-                                    ${versions.length > 1 ? `<span class="delete-version" data-section="${section.key}" data-index="${i}">×</span>` : ''}
+                                <button class="editor-version-tab ${i === activeVersion ? 'active' : ''}" data-section="${section.key}" data-index="${i}">
+                                    ${v.name}${versions.length > 1 ? `<span class="delete-version" data-section="${section.key}" data-index="${i}">×</span>` : ''}
                                 </button>
                             `).join('')}
                         </div>
                         <div class="editor-content">
                             <div class="editor-version-name">
-                                <input type="text" placeholder="Version name" value="${currentVersion.name}"
-                                       data-section="${section.key}" data-field="name">
+                                <input type="text" placeholder="Version name" value="${currentVersion.name}" data-section="${section.key}" data-field="name">
                                 ${versions.length > 1 ? `<button class="delete-btn" data-section="${section.key}" data-index="${activeVersion}">Delete</button>` : ''}
                             </div>
                             <textarea data-section="${section.key}" data-field="content">${currentVersion.content}</textarea>
@@ -1795,75 +1429,47 @@
                 `;
             }).join('');
 
-            // Add event listeners
             container.querySelectorAll('.editor-version-tab').forEach(tab => {
                 tab.addEventListener('click', (e) => {
                     if (e.target.classList.contains('delete-version')) return;
-                    const section = e.currentTarget.dataset.section;
-                    const index = parseInt(e.currentTarget.dataset.index);
-                    state.editorState.activeVersions[section] = index;
+                    state.editorState.activeVersions[e.currentTarget.dataset.section] = parseInt(e.currentTarget.dataset.index);
                     renderEditorContent();
                 });
             });
-
             container.querySelectorAll('.delete-version').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const section = e.target.dataset.section;
-                    const index = parseInt(e.target.dataset.index);
-                    deleteVersion(section, index);
-                });
+                btn.addEventListener('click', (e) => { e.stopPropagation(); deleteVersion(e.target.dataset.section, parseInt(e.target.dataset.index)); });
             });
-
             container.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const section = e.target.dataset.section;
-                    const index = parseInt(e.target.dataset.index);
-                    deleteVersion(section, index);
-                });
+                btn.addEventListener('click', (e) => { deleteVersion(e.target.dataset.section, parseInt(e.target.dataset.index)); });
             });
-
             container.querySelectorAll('.add-version-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const section = e.target.dataset.section;
-                    addVersion(section);
-                });
+                btn.addEventListener('click', (e) => { addVersion(e.target.dataset.section); });
             });
-
             container.querySelectorAll('input[data-field="name"]').forEach(input => {
                 input.addEventListener('input', (e) => {
-                    const section = e.target.dataset.section;
-                    const activeVersion = state.editorState.activeVersions[section] || 0;
-                    state.scripts[state.editorState.activeRole][section][activeVersion].name = e.target.value;
+                    const activeVersion = state.editorState.activeVersions[e.target.dataset.section] || 0;
+                    state.scripts[state.editorState.activeRole][e.target.dataset.section][activeVersion].name = e.target.value;
                 });
             });
-
             container.querySelectorAll('textarea[data-field="content"]').forEach(textarea => {
                 textarea.addEventListener('input', (e) => {
-                    const section = e.target.dataset.section;
-                    const activeVersion = state.editorState.activeVersions[section] || 0;
-                    state.scripts[state.editorState.activeRole][section][activeVersion].content = e.target.value;
+                    const activeVersion = state.editorState.activeVersions[e.target.dataset.section] || 0;
+                    state.scripts[state.editorState.activeRole][e.target.dataset.section][activeVersion].content = e.target.value;
                 });
             });
         }
 
         function addVersion(section) {
-            const role = state.editorState.activeRole;
-            state.scripts[role][section].push({
-                name: 'New Version',
-                content: ''
-            });
-            state.editorState.activeVersions[section] = state.scripts[role][section].length - 1;
+            state.scripts[state.editorState.activeRole][section].push({ name: 'New Version', content: '' });
+            state.editorState.activeVersions[section] = state.scripts[state.editorState.activeRole][section].length - 1;
             renderEditorContent();
         }
 
         function deleteVersion(section, index) {
-            const role = state.editorState.activeRole;
-            if (state.scripts[role][section].length <= 1) return;
-
-            state.scripts[role][section].splice(index, 1);
-            if (state.editorState.activeVersions[section] >= state.scripts[role][section].length) {
-                state.editorState.activeVersions[section] = state.scripts[role][section].length - 1;
+            if (state.scripts[state.editorState.activeRole][section].length <= 1) return;
+            state.scripts[state.editorState.activeRole][section].splice(index, 1);
+            if ((state.editorState.activeVersions[section] || 0) >= state.scripts[state.editorState.activeRole][section].length) {
+                state.editorState.activeVersions[section] = state.scripts[state.editorState.activeRole][section].length - 1;
             }
             renderEditorContent();
         }
@@ -1871,67 +1477,136 @@
         function updateEditorStats() {
             let totalAnswered = 0;
             Object.values(state.callHistory).forEach(history => {
-                history.forEach(call => {
-                    if (call.status === 'answered') totalAnswered++;
-                });
+                history.forEach(call => { if (call.status === 'answered') totalAnswered++; });
             });
-
-            document.getElementById('editorStats').innerHTML = `
-                Total calls answered: <strong>${totalAnswered}</strong>
-            `;
+            document.getElementById('editorStats').innerHTML = `Total calls answered: <strong>${totalAnswered}</strong>`;
         }
 
         function saveScripts() {
             saveState();
-            hideScriptEditor();
-
-            // Re-render current scripts
+            hideEditor();
             if (state.filteredLeads.length > 0) {
                 const lead = state.filteredLeads[state.currentIndex];
-                const roleCategory = categorizeRole(lead.role);
-                renderScripts(roleCategory);
+                renderScripts(categorizeRole(lead.role), lead);
             }
+        }
+
+        // ============================================
+        // REP MANAGEMENT
+        // ============================================
+        function renderRepList() {
+            const container = document.getElementById('repList');
+            container.innerHTML = state.reps.map(rep => `
+                <div class="rep-item">
+                    <span>${rep}</span>
+                    ${state.reps.length > 1 ? `<button class="delete-btn" data-rep="${rep}">Remove</button>` : ''}
+                </div>
+            `).join('');
+            container.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => { removeRep(e.target.dataset.rep); });
+            });
+        }
+
+        function addRep() {
+            const input = document.getElementById('newRepName');
+            const name = input.value.trim();
+            if (!name || state.reps.includes(name)) return;
+            state.reps.push(name);
+            input.value = '';
+            renderRepList();
+            updateRepSelector();
+            saveState();
+        }
+
+        function removeRep(name) {
+            if (state.reps.length <= 1) return;
+            state.reps = state.reps.filter(r => r !== name);
+            if (state.currentRep === name) state.currentRep = state.reps[0];
+            renderRepList();
+            updateRepSelector();
+            saveState();
+        }
+
+        function updateRepSelector() {
+            const select = document.getElementById('repSelector');
+            select.innerHTML = state.reps.map(rep => `<option value="${rep}" ${rep === state.currentRep ? 'selected' : ''}>${rep}</option>`).join('');
+        }
+
+        // ============================================
+        // HISTORY MODAL
+        // ============================================
+        function showHistory() {
+            document.getElementById('historyModal').classList.add('active');
+            renderHistoryTabs();
+            renderHistoryList();
+        }
+
+        function hideHistory() { document.getElementById('historyModal').classList.remove('active'); }
+
+        function renderHistoryTabs() {
+            document.querySelectorAll('#historyTabs .history-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.status === state.historyTab);
+            });
+        }
+
+        function renderHistoryList() {
+            const container = document.getElementById('historyList');
+            let items = [];
+
+            state.leads.forEach(lead => {
+                const leadId = generateLeadId(lead);
+                const history = state.callHistory[leadId] || [];
+                const status = getLeadStatus(leadId);
+
+                if (state.historyTab === 'not_called' && status === 'not_called') {
+                    items.push({ lead, history: null, status: 'not_called' });
+                } else if (state.historyTab !== 'not_called') {
+                    history.filter(h => h.status === state.historyTab).forEach(h => {
+                        items.push({ lead, history: h, status: h.status });
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:#718096;">No calls in this category</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : '';
+                return `
+                    <div class="history-item ${statusClass}">
+                        <div class="history-item-header">
+                            <div>
+                                <div class="history-item-name">${item.lead.contactName || 'Unknown'}</div>
+                                <div class="history-item-company">${item.lead.company || '-'}</div>
+                            </div>
+                            ${item.history ? `<div class="history-item-date">${formatDate(item.history.date)}</div>` : ''}
+                        </div>
+                        <div class="history-item-phone">${formatPhone(item.lead.phone)}</div>
+                        ${item.history && item.history.notes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.history.notes}</div>` : ''}
+                        ${item.history && item.history.scriptSnapshot ? `
+                            <div class="history-item-notes">
+                                <strong>Script used:</strong> ${item.history.scriptSnapshot.map(s => s.versionName).join(', ')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
         // ============================================
         // CSV EXPORT
         // ============================================
-
         function exportCSV() {
-            const headers = ['Company', 'Location', 'Phone', 'Vertical', 'Contact Name', 'Role',
-                           'Qualifying Signals', 'LinkedIn URL', 'Status', 'Person',
-                           'Call Status', 'Times Called', 'Last Call Date', 'Latest Notes'];
-
+            const headers = ['Company', 'Location', 'Phone', 'Vertical', 'Contact Name', 'Role', 'Qualifying Signals', 'LinkedIn URL', 'Call Status', 'Times Called', 'Last Call Date', 'Latest Notes'];
             const rows = state.leads.map(lead => {
                 const leadId = generateLeadId(lead);
                 const history = state.callHistory[leadId] || [];
                 const lastCall = history[history.length - 1];
-
-                const callStatus = lastCall ?
-                    (lastCall.status === 'answered' ? 'Answered' :
-                     lastCall.status === 'no_answer' ? 'No Answer' : "Didn't Ring") : 'Not Called';
-
-                const lastCallDate = lastCall ? formatDate(lastCall.date) : '';
-                const latestNotes = lastCall && lastCall.notes ? lastCall.notes : '';
-
-                return [
-                    lead.company,
-                    lead.location,
-                    lead.phone,
-                    lead.vertical,
-                    lead.contactName,
-                    lead.role,
-                    lead.qualifyingSignals,
-                    lead.linkedInUrl,
-                    lead.status,
-                    lead.person,
-                    callStatus,
-                    history.length,
-                    lastCallDate,
-                    latestNotes
-                ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
+                const callStatus = lastCall ? (lastCall.status === 'answered' ? 'Answered' : 'No Answer') : 'Not Called';
+                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, history.length, lastCall ? formatDate(lastCall.date) : '', lastCall && lastCall.notes ? lastCall.notes : ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
             });
-
             const csv = [headers.join(','), ...rows].join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
@@ -1943,20 +1618,20 @@
         }
 
         // ============================================
-        // LOCAL STORAGE
+        // STORAGE
         // ============================================
-
         function saveState() {
-            const data = {
+            localStorage.setItem('coldCallAppState', JSON.stringify({
                 leads: state.leads,
                 callHistory: state.callHistory,
                 scripts: state.scripts,
                 selectedVersions: state.selectedVersions,
                 currentIndex: state.currentIndex,
                 filters: state.filters,
-                pushNotifications: state.pushNotifications
-            };
-            localStorage.setItem('coldCallAppState', JSON.stringify(data));
+                pushNotifications: state.pushNotifications,
+                reps: state.reps,
+                currentRep: state.currentRep
+            }));
         }
 
         function loadState() {
@@ -1971,30 +1646,29 @@
                     state.currentIndex = data.currentIndex || 0;
                     state.filters = data.filters || state.filters;
                     state.pushNotifications = data.pushNotifications !== undefined ? data.pushNotifications : true;
-
-                    if (state.leads.length > 0) {
-                        showMainContent();
-                        applyFilters();
-                    }
-                } catch (e) {
-                    console.error('Error loading state:', e);
-                }
+                    state.reps = data.reps || ['Default Rep'];
+                    state.currentRep = data.currentRep || state.reps[0];
+                    state.isFirstLoad = false;
+                    if (state.leads.length > 0) { showMainContent(); applyFilters(); }
+                } catch (e) { console.error('Error loading state:', e); }
             }
         }
 
         // ============================================
         // UI HELPERS
         // ============================================
-
         function showMainContent() {
             document.getElementById('uploadSection').classList.add('hidden');
             document.getElementById('mainContent').classList.add('active');
             document.getElementById('filtersBar').classList.add('active');
             document.getElementById('pushToggleBtn').style.display = 'inline-flex';
-            document.getElementById('editScriptsBtn').style.display = 'inline-flex';
+            document.getElementById('historyBtn').style.display = 'inline-flex';
+            document.getElementById('editBtn').style.display = 'inline-flex';
             document.getElementById('exportBtn').style.display = 'inline-flex';
             document.getElementById('newUploadBtn').style.display = 'inline-flex';
+            document.getElementById('repSelectorContainer').style.display = 'flex';
             updatePushToggleUI();
+            updateRepSelector();
         }
 
         function resetForNewUpload() {
@@ -2005,22 +1679,22 @@
         }
 
         // ============================================
-        // EVENT LISTENERS
+        // INIT
         // ============================================
-
         document.addEventListener('DOMContentLoaded', () => {
-            // Load saved state
             loadState();
 
-            // CSV Upload
             document.getElementById('csvUpload').addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     state.leads = parseCSV(event.target.result);
                     state.currentIndex = 0;
+                    if (state.isFirstLoad) {
+                        state.filters = { answered: false, noAnswer: false, notCalled: true, role: 'all', region: 'all' };
+                        state.isFirstLoad = false;
+                    }
                     showMainContent();
                     applyFilters();
                     saveState();
@@ -2028,111 +1702,70 @@
                 reader.readAsText(file);
             });
 
-            // New Upload button
             document.getElementById('newUploadBtn').addEventListener('click', resetForNewUpload);
-
-            // Navigation
             document.getElementById('prevBtn').addEventListener('click', moveToPrevious);
-
-            // Call actions
             document.getElementById('btnAnswered').addEventListener('click', () => recordCall('answered'));
             document.getElementById('btnNoAnswer').addEventListener('click', () => recordCall('no_answer'));
-            document.getElementById('btnDidntRing').addEventListener('click', () => recordCall('didnt_ring'));
-
-            // Notes modal
             document.getElementById('closeNotesModal').addEventListener('click', hideNotesModal);
             document.getElementById('cancelNotes').addEventListener('click', hideNotesModal);
             document.getElementById('saveNotes').addEventListener('click', saveNotesAndContinue);
-
-            // Script editor
-            document.getElementById('editScriptsBtn').addEventListener('click', showScriptEditor);
-            document.getElementById('closeEditorModal').addEventListener('click', hideScriptEditor);
-            document.getElementById('closeEditor').addEventListener('click', hideScriptEditor);
+            document.getElementById('editBtn').addEventListener('click', showEditor);
+            document.getElementById('closeEditorModal').addEventListener('click', hideEditor);
+            document.getElementById('closeEditor').addEventListener('click', hideEditor);
             document.getElementById('saveScripts').addEventListener('click', saveScripts);
-
-            // Push notifications toggle
             document.getElementById('pushToggleBtn').addEventListener('click', togglePushNotifications);
-
-            // Export
             document.getElementById('exportBtn').addEventListener('click', exportCSV);
-
-            // Filters
-            document.getElementById('filterAnswered').addEventListener('change', (e) => {
-                state.filters.answered = e.target.checked;
-                applyFilters();
+            document.getElementById('historyBtn').addEventListener('click', showHistory);
+            document.getElementById('closeHistoryModal').addEventListener('click', hideHistory);
+            document.getElementById('addRepBtn').addEventListener('click', addRep);
+            document.getElementById('newRepName').addEventListener('keydown', (e) => { if (e.key === 'Enter') addRep(); });
+            document.getElementById('repSelector').addEventListener('change', (e) => {
+                state.currentRep = e.target.value;
                 saveState();
-            });
-            document.getElementById('filterNoAnswer').addEventListener('change', (e) => {
-                state.filters.noAnswer = e.target.checked;
-                applyFilters();
-                saveState();
-            });
-            document.getElementById('filterDidntRing').addEventListener('change', (e) => {
-                state.filters.didntRing = e.target.checked;
-                applyFilters();
-                saveState();
-            });
-            document.getElementById('filterNotCalled').addEventListener('change', (e) => {
-                state.filters.notCalled = e.target.checked;
-                applyFilters();
-                saveState();
-            });
-            document.getElementById('filterRole').addEventListener('change', (e) => {
-                state.filters.role = e.target.value;
-                applyFilters();
-                saveState();
-            });
-            document.getElementById('filterRegion').addEventListener('change', (e) => {
-                state.filters.region = e.target.value;
-                applyFilters();
-                saveState();
+                if (state.filteredLeads.length > 0) {
+                    const lead = state.filteredLeads[state.currentIndex];
+                    renderScripts(categorizeRole(lead.role), lead);
+                }
             });
 
-            // Restore filter UI state
+            document.querySelectorAll('#historyTabs .history-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    state.historyTab = tab.dataset.status;
+                    renderHistoryTabs();
+                    renderHistoryList();
+                });
+            });
+
+            document.getElementById('filterAnswered').addEventListener('change', (e) => { state.filters.answered = e.target.checked; applyFilters(); saveState(); });
+            document.getElementById('filterNoAnswer').addEventListener('change', (e) => { state.filters.noAnswer = e.target.checked; applyFilters(); saveState(); });
+            document.getElementById('filterNotCalled').addEventListener('change', (e) => { state.filters.notCalled = e.target.checked; applyFilters(); saveState(); });
+            document.getElementById('filterRole').addEventListener('change', (e) => { state.filters.role = e.target.value; applyFilters(); saveState(); });
+            document.getElementById('filterRegion').addEventListener('change', (e) => { state.filters.region = e.target.value; applyFilters(); saveState(); });
+
             document.getElementById('filterAnswered').checked = state.filters.answered;
             document.getElementById('filterNoAnswer').checked = state.filters.noAnswer;
-            document.getElementById('filterDidntRing').checked = state.filters.didntRing;
             document.getElementById('filterNotCalled').checked = state.filters.notCalled;
             document.getElementById('filterRole').value = state.filters.role;
             document.getElementById('filterRegion').value = state.filters.region;
 
-            // Keyboard navigation
             document.addEventListener('keydown', (e) => {
-                // Don't trigger if typing in input/textarea
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-                // Don't trigger if modal is open
                 if (document.getElementById('notesModal').classList.contains('active')) return;
                 if (document.getElementById('editorModal').classList.contains('active')) return;
-
+                if (document.getElementById('historyModal').classList.contains('active')) return;
                 switch(e.key) {
-                    case 'ArrowLeft':
-                        moveToPrevious();
-                        break;
-                    case '1':
-                        recordCall('answered');
-                        break;
-                    case '2':
-                        recordCall('no_answer');
-                        break;
-                    case '3':
-                        recordCall('didnt_ring');
-                        break;
+                    case 'ArrowLeft': moveToPrevious(); break;
+                    case '1': recordCall('answered'); break;
+                    case '2': recordCall('no_answer'); break;
                 }
             });
 
-            // Close modals on overlay click
-            document.getElementById('notesModal').addEventListener('click', (e) => {
-                if (e.target === e.currentTarget) hideNotesModal();
-            });
-            document.getElementById('editorModal').addEventListener('click', (e) => {
-                if (e.target === e.currentTarget) hideScriptEditor();
-            });
+            document.getElementById('notesModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) hideNotesModal(); });
+            document.getElementById('editorModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) hideEditor(); });
+            document.getElementById('historyModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) hideHistory(); });
 
-            // Enter to save notes
             document.getElementById('callNotes').addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.ctrlKey) {
-                    saveNotesAndContinue();
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNotesAndContinue(); }
             });
         });
     </script>
