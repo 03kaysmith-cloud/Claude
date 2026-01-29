@@ -1399,9 +1399,9 @@
                     'Call': { select: { name: callStatus } }
                 };
 
-                // Only update Follow Up if it's an answered call
+                // Only update Follow up status if it's an answered call
                 if (followUp) {
-                    properties['Follow Up'] = { select: { name: followUp } };
+                    properties['Follow up status'] = { select: { name: followUp } };
                 }
 
                 await notionRequest(`/pages/${pageId}`, 'PATCH', { properties });
@@ -1964,14 +1964,20 @@
                 const status = getLeadStatus(leadId);
                 const callCount = getCallCount(leadId);
 
+                // Get all notes combined for this lead
+                const allNotes = history.map(h => h.notes).filter(n => n).join('\n');
+
                 if (state.historyTab === 'do_not_call' && isOnDoNotCallList(leadId)) {
-                    items.push({ lead, history: history[history.length - 1] || null, status: 'do_not_call', callCount });
+                    items.push({ lead, history: history[history.length - 1] || null, status: 'do_not_call', callCount, allNotes });
                 } else if (state.historyTab === 'not_called' && status === 'not_called') {
-                    items.push({ lead, history: null, status: 'not_called', callCount });
+                    items.push({ lead, history: null, status: 'not_called', callCount, allNotes });
                 } else if (state.historyTab !== 'not_called' && state.historyTab !== 'do_not_call') {
-                    history.filter(h => h.status === state.historyTab).forEach(h => {
-                        items.push({ lead, history: h, status: h.status, callCount });
-                    });
+                    // Show ONE entry per lead with latest call of that type
+                    const matchingCalls = history.filter(h => h.status === state.historyTab);
+                    if (matchingCalls.length > 0) {
+                        const latestCall = matchingCalls[matchingCalls.length - 1];
+                        items.push({ lead, history: latestCall, status: latestCall.status, callCount, allNotes });
+                    }
                 }
             });
 
@@ -1982,6 +1988,8 @@
 
             container.innerHTML = items.map(item => {
                 const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : item.status === 'do_not_call' ? 'do-not-call' : '';
+                const isImported = item.history && item.history.rep === 'Imported';
+                const dateDisplay = item.history ? (isImported ? 'Imported from Notion' : formatDate(item.history.date)) : '';
                 return `
                     <div class="history-item ${statusClass}">
                         <div class="history-item-header">
@@ -1989,10 +1997,10 @@
                                 <div class="history-item-name">${item.lead.contactName || 'Unknown'}</div>
                                 <div class="history-item-company">${item.lead.company || '-'} · ${item.callCount} call${item.callCount !== 1 ? 's' : ''}</div>
                             </div>
-                            ${item.history ? `<div class="history-item-date">${formatDate(item.history.date)}</div>` : ''}
+                            ${dateDisplay ? `<div class="history-item-date">${dateDisplay}</div>` : ''}
                         </div>
                         <div class="history-item-phone">${formatPhone(item.lead.phone)}</div>
-                        ${item.history && item.history.notes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.history.notes}</div>` : ''}
+                        ${item.allNotes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.allNotes}</div>` : ''}
                         ${item.history && item.history.scriptSnapshot ? `
                             <div class="history-item-notes">
                                 <strong>Script used:</strong> ${item.history.scriptSnapshot.map(s => s.versionName).join(', ')}
