@@ -1259,7 +1259,46 @@
 
         function formatPhone(phone) {
             if (!phone) return '-';
-            return phone.toString();
+
+            let p = phone.toString();
+
+            // Handle scientific notation (e.g., 4.42073E+11 from Excel)
+            if (p.includes('E+') || p.includes('e+')) {
+                try {
+                    p = BigInt(Math.round(parseFloat(p))).toString();
+                } catch (e) {
+                    p = Math.round(parseFloat(p)).toString();
+                }
+            }
+
+            // Remove any existing formatting (spaces, dashes, parentheses)
+            let cleaned = p.replace(/[\s\-\(\)\.]/g, '');
+
+            // Ensure it starts with +
+            if (!cleaned.startsWith('+')) {
+                // If it starts with 00, replace with +
+                if (cleaned.startsWith('00')) {
+                    cleaned = '+' + cleaned.substring(2);
+                }
+                // If it starts with 44 (UK), add +
+                else if (cleaned.startsWith('44')) {
+                    cleaned = '+' + cleaned;
+                }
+                // If it starts with 1 and is 11 digits (US), add +
+                else if (cleaned.startsWith('1') && cleaned.length === 11) {
+                    cleaned = '+' + cleaned;
+                }
+                // If it starts with 0 (UK local), convert to +44
+                else if (cleaned.startsWith('0') && cleaned.length >= 10) {
+                    cleaned = '+44' + cleaned.substring(1);
+                }
+                // Otherwise just add + prefix
+                else {
+                    cleaned = '+' + cleaned;
+                }
+            }
+
+            return cleaned;
         }
 
         // ============================================
