@@ -654,6 +654,35 @@
         .keyboard-hints { display: flex; gap: 15px; font-size: 12px; color: #718096; margin-top: 10px; }
         .keyboard-hint kbd { background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
 
+        .notion-manager { margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0; }
+        .notion-manager h4 { color: #1a365d; margin-bottom: 15px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .notion-manager h4 img { width: 20px; height: 20px; }
+
+        .notion-form { display: flex; flex-direction: column; gap: 12px; }
+        .notion-form label { font-size: 13px; color: #4a5568; font-weight: 500; }
+        .notion-form input { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; }
+        .notion-form input:focus { outline: none; border-color: #4299e1; }
+        .notion-form small { font-size: 11px; color: #718096; margin-top: -8px; }
+
+        .notion-status { padding: 12px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; }
+        .notion-status.connected { background: #c6f6d5; color: #22543d; }
+        .notion-status.disconnected { background: #fed7d7; color: #822727; }
+        .notion-status.syncing { background: #fef3c7; color: #92400e; }
+
+        .notion-actions { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+
+        .notion-checkbox { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .notion-checkbox input { cursor: pointer; }
+        .notion-checkbox label { font-size: 13px; color: #4a5568; cursor: pointer; }
+
+        .btn-notion { background: #000; color: white; }
+        .btn-notion:hover { background: #333; }
+
+        .sync-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #718096; margin-left: 10px; }
+        .sync-indicator.syncing { color: #ed8936; }
+        .sync-indicator.success { color: #48bb78; }
+        .sync-indicator.error { color: #f56565; }
+
         @media (max-width: 1024px) {
             .main-content.active { grid-template-columns: 1fr; }
         }
@@ -668,18 +697,22 @@
                     <label>Rep:</label>
                     <select id="repSelector"></select>
                 </div>
+                <button class="btn btn-notion" id="notionSyncBtn" style="display: none;">↻ Sync Notion</button>
                 <button class="btn btn-success" id="pushToggleBtn" style="display: none;">🔔 Push ON</button>
                 <button class="btn btn-secondary" id="historyBtn" style="display: none;">📋 History</button>
                 <button class="btn btn-secondary" id="editBtn" style="display: none;">⚙ Settings</button>
                 <button class="btn btn-secondary" id="exportBtn" style="display: none;">⬇ Export CSV</button>
-                <button class="btn btn-secondary" id="newUploadBtn" style="display: none;">↑ New CSV</button>
+                <button class="btn btn-secondary" id="newUploadBtn" style="display: none;">↑ New Data</button>
             </div>
         </header>
 
         <section class="upload-section" id="uploadSection">
-            <h2>Upload Your Leads CSV</h2>
-            <p>Import your leads to get started. Expected columns: Company, Phone, Contact name, Role, etc.</p>
-            <label class="upload-label" for="csvUpload">Choose CSV File</label>
+            <h2>Get Started</h2>
+            <p>Import your leads from CSV or connect to Notion</p>
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+                <label class="upload-label" for="csvUpload">📄 Upload CSV</label>
+                <button class="upload-label" id="connectNotionBtn" style="background: #000; border: none; cursor: pointer;">📝 Connect Notion</button>
+            </div>
             <input type="file" id="csvUpload" accept=".csv">
         </section>
 
@@ -840,6 +873,35 @@
                         <button class="btn btn-success" id="addRepBtn">Add Rep</button>
                     </div>
                 </div>
+
+                <div class="notion-manager">
+                    <h4>📝 Notion Integration</h4>
+                    <div class="notion-status" id="notionStatus">Not connected</div>
+                    <div class="notion-form">
+                        <div>
+                            <label>Notion API Key (Integration Token)</label>
+                            <input type="password" id="notionApiKey" placeholder="secret_xxxxx...">
+                            <small>Create at <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a></small>
+                        </div>
+                        <div>
+                            <label>Database ID</label>
+                            <input type="text" id="notionDatabaseId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            <small>Found in your Notion database URL after the workspace name</small>
+                        </div>
+                        <div class="notion-checkbox">
+                            <input type="checkbox" id="notionAutoSync" checked>
+                            <label for="notionAutoSync">Auto-sync after each call</label>
+                        </div>
+                    </div>
+                    <div class="notion-actions">
+                        <button class="btn btn-notion" id="testNotionBtn">Test Connection</button>
+                        <button class="btn btn-primary" id="syncFromNotionBtn">↓ Pull from Notion</button>
+                        <button class="btn btn-success" id="syncToNotionBtn">↑ Push to Notion</button>
+                    </div>
+                    <small style="display: block; margin-top: 15px; color: #718096;">
+                        Required Notion columns: Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Cold Call Notes, Cold Call Status
+                    </small>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="closeEditor">Close</button>
@@ -894,8 +956,19 @@
             reps: ['Default Rep'],
             currentRep: 'Default Rep',
             historyTab: 'answered',
-            isFirstLoad: true
+            isFirstLoad: true,
+            // Notion integration
+            notion: {
+                enabled: false,
+                apiKey: '',
+                databaseId: '',
+                autoSync: true,
+                lastSync: null
+            },
+            notionPageIds: {} // Maps leadId to Notion page ID
         };
+
+        const CORS_PROXY = 'https://corsproxy.io/?';
 
         const NTFY_TOPIC = 'cold-calling-hiveperform';
         const NTFY_URL = `https://ntfy.sh/${NTFY_TOPIC}`;
@@ -1116,6 +1189,242 @@
         }
 
         // ============================================
+        // NOTION INTEGRATION
+        // ============================================
+        async function notionRequest(endpoint, method = 'GET', body = null) {
+            const url = `${CORS_PROXY}${encodeURIComponent('https://api.notion.com/v1' + endpoint)}`;
+            const options = {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${state.notion.apiKey}`,
+                    'Notion-Version': '2022-06-28',
+                    'Content-Type': 'application/json'
+                }
+            };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Notion API error: ${response.status}`);
+            }
+            return response.json();
+        }
+
+        async function testNotionConnection() {
+            const statusEl = document.getElementById('notionStatus');
+            statusEl.className = 'notion-status syncing';
+            statusEl.textContent = 'Testing connection...';
+            try {
+                const result = await notionRequest(`/databases/${state.notion.databaseId}`);
+                state.notion.enabled = true;
+                statusEl.className = 'notion-status connected';
+                statusEl.textContent = `Connected to: ${result.title?.[0]?.plain_text || 'Database'}`;
+                saveState();
+                return true;
+            } catch (error) {
+                state.notion.enabled = false;
+                statusEl.className = 'notion-status disconnected';
+                statusEl.textContent = `Error: ${error.message}`;
+                return false;
+            }
+        }
+
+        function getNotionPropertyValue(page, propertyName) {
+            const prop = page.properties[propertyName];
+            if (!prop) return '';
+            switch (prop.type) {
+                case 'title': return prop.title?.[0]?.plain_text || '';
+                case 'rich_text': return prop.rich_text?.[0]?.plain_text || '';
+                case 'phone_number': return prop.phone_number || '';
+                case 'url': return prop.url || '';
+                case 'number': return prop.number || 0;
+                case 'select': return prop.select?.name || '';
+                case 'multi_select': return prop.multi_select?.map(s => s.name).join(', ') || '';
+                case 'date': return prop.date?.start || '';
+                case 'people': return prop.people?.[0]?.name || '';
+                default: return '';
+            }
+        }
+
+        async function syncFromNotion() {
+            if (!state.notion.apiKey || !state.notion.databaseId) {
+                alert('Please enter your Notion API key and Database ID in Settings');
+                return;
+            }
+            const statusEl = document.getElementById('notionStatus');
+            const syncBtn = document.getElementById('notionSyncBtn');
+            if (statusEl) {
+                statusEl.className = 'notion-status syncing';
+                statusEl.textContent = 'Syncing from Notion...';
+            }
+            if (syncBtn) syncBtn.textContent = '↻ Syncing...';
+
+            try {
+                let allPages = [];
+                let hasMore = true;
+                let startCursor = undefined;
+
+                while (hasMore) {
+                    const body = { page_size: 100 };
+                    if (startCursor) body.start_cursor = startCursor;
+                    const result = await notionRequest(`/databases/${state.notion.databaseId}/query`, 'POST', body);
+                    allPages = allPages.concat(result.results);
+                    hasMore = result.has_more;
+                    startCursor = result.next_cursor;
+                }
+
+                state.leads = allPages.map(page => {
+                    const lead = {
+                        company: getNotionPropertyValue(page, 'Company'),
+                        location: getNotionPropertyValue(page, 'Location'),
+                        phone: getNotionPropertyValue(page, 'Phone'),
+                        vertical: getNotionPropertyValue(page, 'Vertical'),
+                        contactName: getNotionPropertyValue(page, 'Contact name'),
+                        role: getNotionPropertyValue(page, 'Role'),
+                        qualifyingSignals: getNotionPropertyValue(page, 'Qualifying Signals'),
+                        linkedInUrl: getNotionPropertyValue(page, 'LinkedIn URL'),
+                        notionPageId: page.id
+                    };
+                    // Store page ID mapping
+                    const leadId = generateLeadId(lead);
+                    state.notionPageIds[leadId] = page.id;
+
+                    // Load existing call data from Notion
+                    const callCount = getNotionPropertyValue(page, 'No. of Calls');
+                    const coldCallStatus = getNotionPropertyValue(page, 'Cold Call Status');
+                    const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
+                    const lastCallDate = getNotionPropertyValue(page, 'Call');
+
+                    // If there's call history in Notion, populate local state
+                    if (callCount > 0 && coldCallStatus && !state.callHistory[leadId]) {
+                        const statusMap = { 'Answered': 'answered', 'No Answer': 'no_answer', 'Didn\'t Ring': 'didnt_ring', 'Do Not Call': 'didnt_ring' };
+                        state.callHistory[leadId] = [{
+                            date: lastCallDate || new Date().toISOString(),
+                            status: statusMap[coldCallStatus] || 'no_answer',
+                            notes: coldCallNotes,
+                            rep: state.currentRep
+                        }];
+                    }
+                    return lead;
+                });
+
+                state.currentIndex = 0;
+                state.notion.lastSync = new Date().toISOString();
+                state.notion.enabled = true;
+
+                if (statusEl) {
+                    statusEl.className = 'notion-status connected';
+                    statusEl.textContent = `Synced ${state.leads.length} leads from Notion`;
+                }
+                if (syncBtn) syncBtn.textContent = '↻ Sync Notion';
+
+                showMainContent();
+                applyFilters();
+                saveState();
+            } catch (error) {
+                console.error('Notion sync error:', error);
+                if (statusEl) {
+                    statusEl.className = 'notion-status disconnected';
+                    statusEl.textContent = `Sync failed: ${error.message}`;
+                }
+                if (syncBtn) syncBtn.textContent = '↻ Sync Notion';
+                alert('Failed to sync from Notion: ' + error.message);
+            }
+        }
+
+        async function syncLeadToNotion(lead, leadId) {
+            if (!state.notion.enabled || !state.notion.autoSync) return;
+            const pageId = state.notionPageIds[leadId];
+            if (!pageId) return;
+
+            const history = state.callHistory[leadId] || [];
+            const callCount = history.length;
+            const lastCall = history[history.length - 1];
+
+            let coldCallStatus = 'Not Called';
+            if (lastCall) {
+                const statusMap = { 'answered': 'Answered', 'no_answer': 'No Answer', 'didnt_ring': 'Didn\'t Ring' };
+                coldCallStatus = statusMap[lastCall.status] || 'Not Called';
+            }
+            if (isOnDoNotCallList(leadId)) coldCallStatus = 'Do Not Call';
+
+            const allNotes = history.map(h => h.notes).filter(n => n).join('\n---\n');
+
+            try {
+                await notionRequest(`/pages/${pageId}`, 'PATCH', {
+                    properties: {
+                        'No. of Calls': { number: callCount },
+                        'Call': lastCall ? { date: { start: lastCall.date.split('T')[0] } } : null,
+                        'Cold Call Notes': { rich_text: [{ text: { content: allNotes.substring(0, 2000) } }] },
+                        'Cold Call Status': { select: { name: coldCallStatus } }
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to sync lead to Notion:', error);
+            }
+        }
+
+        async function syncAllToNotion() {
+            if (!state.notion.apiKey || !state.notion.databaseId) {
+                alert('Please enter your Notion API key and Database ID in Settings');
+                return;
+            }
+            const statusEl = document.getElementById('notionStatus');
+            if (statusEl) {
+                statusEl.className = 'notion-status syncing';
+                statusEl.textContent = 'Pushing to Notion...';
+            }
+
+            try {
+                let synced = 0;
+                for (const lead of state.leads) {
+                    const leadId = generateLeadId(lead);
+                    if (state.notionPageIds[leadId]) {
+                        await syncLeadToNotion(lead, leadId);
+                        synced++;
+                    }
+                }
+                if (statusEl) {
+                    statusEl.className = 'notion-status connected';
+                    statusEl.textContent = `Pushed ${synced} leads to Notion`;
+                }
+            } catch (error) {
+                if (statusEl) {
+                    statusEl.className = 'notion-status disconnected';
+                    statusEl.textContent = `Push failed: ${error.message}`;
+                }
+            }
+        }
+
+        function updateNotionStatusUI() {
+            const statusEl = document.getElementById('notionStatus');
+            if (!statusEl) return;
+            if (state.notion.enabled) {
+                statusEl.className = 'notion-status connected';
+                statusEl.textContent = state.notion.lastSync
+                    ? `Connected · Last sync: ${formatDate(state.notion.lastSync)}`
+                    : 'Connected';
+            } else {
+                statusEl.className = 'notion-status disconnected';
+                statusEl.textContent = 'Not connected';
+            }
+        }
+
+        function loadNotionSettings() {
+            document.getElementById('notionApiKey').value = state.notion.apiKey || '';
+            document.getElementById('notionDatabaseId').value = state.notion.databaseId || '';
+            document.getElementById('notionAutoSync').checked = state.notion.autoSync !== false;
+            updateNotionStatusUI();
+        }
+
+        function saveNotionSettings() {
+            state.notion.apiKey = document.getElementById('notionApiKey').value.trim();
+            state.notion.databaseId = document.getElementById('notionDatabaseId').value.trim().replace(/-/g, '');
+            state.notion.autoSync = document.getElementById('notionAutoSync').checked;
+            saveState();
+        }
+
+        // ============================================
         // CSV
         // ============================================
         function parseCSV(text) {
@@ -1322,6 +1631,12 @@
                 rep: state.currentRep
             });
             saveState();
+
+            // Sync to Notion if enabled
+            const lead = state.leads.find(l => generateLeadId(l) === leadId);
+            if (lead && state.notion.enabled && state.notion.autoSync) {
+                syncLeadToNotion(lead, leadId);
+            }
         }
 
         function moveToNext() {
@@ -1392,6 +1707,7 @@
             renderEditorContent();
             renderRepList();
             updateEditorStats();
+            loadNotionSettings();
             modal.classList.add('active');
         }
 
@@ -1659,7 +1975,9 @@
                 filters: state.filters,
                 pushNotifications: state.pushNotifications,
                 reps: state.reps,
-                currentRep: state.currentRep
+                currentRep: state.currentRep,
+                notion: state.notion,
+                notionPageIds: state.notionPageIds
             }));
         }
 
@@ -1677,6 +1995,8 @@
                     state.pushNotifications = data.pushNotifications !== undefined ? data.pushNotifications : true;
                     state.reps = data.reps || ['Default Rep'];
                     state.currentRep = data.currentRep || state.reps[0];
+                    state.notion = data.notion || state.notion;
+                    state.notionPageIds = data.notionPageIds || {};
                     state.isFirstLoad = false;
                     if (state.leads.length > 0) { showMainContent(); applyFilters(); }
                 } catch (e) { console.error('Error loading state:', e); }
@@ -1696,6 +2016,7 @@
             document.getElementById('exportBtn').style.display = 'inline-flex';
             document.getElementById('newUploadBtn').style.display = 'inline-flex';
             document.getElementById('repSelectorContainer').style.display = 'flex';
+            document.getElementById('notionSyncBtn').style.display = state.notion.enabled ? 'inline-flex' : 'none';
             updatePushToggleUI();
             updateRepSelector();
         }
@@ -1757,6 +2078,31 @@
                     renderScripts(categorizeRole(lead.role), lead);
                 }
             });
+
+            // Notion event listeners
+            document.getElementById('connectNotionBtn').addEventListener('click', () => {
+                showEditor();
+                // Scroll to Notion section
+                setTimeout(() => {
+                    document.querySelector('.notion-manager')?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            });
+            document.getElementById('notionSyncBtn').addEventListener('click', syncFromNotion);
+            document.getElementById('testNotionBtn').addEventListener('click', () => {
+                saveNotionSettings();
+                testNotionConnection();
+            });
+            document.getElementById('syncFromNotionBtn').addEventListener('click', () => {
+                saveNotionSettings();
+                syncFromNotion();
+            });
+            document.getElementById('syncToNotionBtn').addEventListener('click', () => {
+                saveNotionSettings();
+                syncAllToNotion();
+            });
+            document.getElementById('notionApiKey').addEventListener('change', saveNotionSettings);
+            document.getElementById('notionDatabaseId').addEventListener('change', saveNotionSettings);
+            document.getElementById('notionAutoSync').addEventListener('change', saveNotionSettings);
 
             document.querySelectorAll('#historyTabs .history-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
