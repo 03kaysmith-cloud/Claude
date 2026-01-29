@@ -841,6 +841,10 @@
             </div>
             <div class="modal-body">
                 <textarea class="notes-textarea" id="callNotes" placeholder="Enter notes here... (Press Enter to save)"></textarea>
+                <div class="notion-checkbox" id="dontFollowUpSection" style="display: none; margin-bottom: 15px;">
+                    <input type="checkbox" id="dontFollowUpCheckbox">
+                    <label for="dontFollowUpCheckbox">Don't follow up</label>
+                </div>
                 <div class="script-snapshot" id="scriptSnapshotSection">
                     <h4>Script Versions Used</h4>
                     <div id="scriptSnapshotContent"></div>
@@ -1352,25 +1356,44 @@
             const history = state.callHistory[leadId] || [];
             const callCount = history.length;
             const lastCall = history[history.length - 1];
+            if (!lastCall) return;
 
-            let coldCallStatus = 'Not Called';
-            if (lastCall) {
-                const statusMap = { 'answered': 'Answered', 'no_answer': 'No Answer', 'didnt_ring': 'Didn\'t Ring' };
-                coldCallStatus = statusMap[lastCall.status] || 'Not Called';
+            // Determine "Call" column value
+            let callStatus;
+            if (lastCall.status === 'didnt_ring') {
+                callStatus = 'Do not call';
+            } else if (lastCall.status === 'answered') {
+                callStatus = 'Answered';
+            } else if (lastCall.status === 'no_answer') {
+                callStatus = callCount >= 3 ? 'Do not call' : 'Call again';
             }
-            if (isOnDoNotCallList(leadId)) coldCallStatus = 'Do Not Call';
 
-            const allNotes = history.map(h => h.notes).filter(n => n).join('\n---\n');
+            // Determine "Follow Up" column value (only for answered calls)
+            let followUp = null;
+            if (lastCall.status === 'answered') {
+                followUp = lastCall.dontFollowUp ? "Don't follow up" : 'Follow up';
+            }
+
+            // Combine all notes with timestamps
+            const allNotes = history.map(h => {
+                if (!h.notes) return null;
+                const date = new Date(h.date).toLocaleDateString('en-GB');
+                return `[${date}] ${h.notes}`;
+            }).filter(n => n).join('\n\n');
 
             try {
-                await notionRequest(`/pages/${pageId}`, 'PATCH', {
-                    properties: {
-                        'No. of Calls': { number: callCount },
-                        'Call': lastCall ? { date: { start: lastCall.date.split('T')[0] } } : null,
-                        'Cold Call Notes': { rich_text: [{ text: { content: allNotes.substring(0, 2000) } }] },
-                        'Cold Call Status': { select: { name: coldCallStatus } }
-                    }
-                });
+                const properties = {
+                    'No. of Calls': { number: callCount },
+                    'Cold Call Notes': { rich_text: [{ text: { content: allNotes.substring(0, 2000) } }] },
+                    'Call': { select: { name: callStatus } }
+                };
+
+                // Only update Follow Up if it's an answered call
+                if (followUp) {
+                    properties['Follow Up'] = { select: { name: followUp } };
+                }
+
+                await notionRequest(`/pages/${pageId}`, 'PATCH', { properties });
             } catch (error) {
                 console.error('Failed to sync lead to Notion:', error);
             }
@@ -1632,15 +1655,24 @@
             const lead = state.filteredLeads[state.currentIndex];
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
+
+            // Skip notes modal for "Didn't Ring" - just record and move on
+            if (status === 'didnt_ring') {
+                addCallRecord(leadId, status, '', roleCategory, false);
+                moveToNext();
+                return;
+            }
+
             showNotesModal(leadId, roleCategory, status);
         }
 
-        function addCallRecord(leadId, status, notes, roleCategory) {
+        function addCallRecord(leadId, status, notes, roleCategory, dontFollowUp = false) {
             if (!state.callHistory[leadId]) state.callHistory[leadId] = [];
             state.callHistory[leadId].push({
                 date: new Date().toISOString(),
                 status,
                 notes,
+                dontFollowUp,
                 scriptSnapshot: status === 'answered' ? getCurrentScriptSnapshot(roleCategory) : null,
                 rep: state.currentRep
             });
@@ -1671,13 +1703,17 @@
             const textarea = document.getElementById('callNotes');
             const snapshotContainer = document.getElementById('scriptSnapshotContent');
             const snapshotSection = document.getElementById('scriptSnapshotSection');
+            const dontFollowUpSection = document.getElementById('dontFollowUpSection');
+            const dontFollowUpCheckbox = document.getElementById('dontFollowUpCheckbox');
 
             const titleMap = { 'answered': 'Call Notes - Answered', 'no_answer': 'Call Notes - No Answer', 'didnt_ring': 'Call Notes - Didn\'t Ring' };
             document.getElementById('notesModalTitle').textContent = titleMap[status] || 'Call Notes';
             textarea.value = '';
+            dontFollowUpCheckbox.checked = false;
 
             if (status === 'answered') {
                 snapshotSection.style.display = 'block';
+                dontFollowUpSection.style.display = 'flex';
                 const snapshot = getCurrentScriptSnapshot(roleCategory);
                 const sectionLabels = { openingLine: 'Opening Line', painPoint: 'Pain Point', discoveryQuestions: 'Discovery Questions', ourSolution: 'Our Solution', valueStatement: 'Value Statement' };
                 snapshotContainer.innerHTML = snapshot.map(s => `
@@ -1688,6 +1724,7 @@
                 `).join('');
             } else {
                 snapshotSection.style.display = 'none';
+                dontFollowUpSection.style.display = 'none';
             }
 
             modal.dataset.leadId = leadId;
@@ -1702,10 +1739,11 @@
         function saveNotesAndContinue() {
             const modal = document.getElementById('notesModal');
             const notes = document.getElementById('callNotes').value;
+            const dontFollowUp = document.getElementById('dontFollowUpCheckbox').checked;
             const leadId = modal.dataset.leadId;
             const roleCategory = modal.dataset.roleCategory;
             const status = modal.dataset.status;
-            addCallRecord(leadId, status, notes, roleCategory);
+            addCallRecord(leadId, status, notes, roleCategory, dontFollowUp);
             hideNotesModal();
             moveToNext();
         }
