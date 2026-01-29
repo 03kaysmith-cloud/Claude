@@ -892,6 +892,10 @@
                             <input type="checkbox" id="notionAutoSync" checked>
                             <label for="notionAutoSync">Auto-sync after each call</label>
                         </div>
+                        <div class="notion-checkbox">
+                            <input type="checkbox" id="notionFilterHasPhone" checked>
+                            <label for="notionFilterHasPhone">Only pull leads with phone numbers</label>
+                        </div>
                     </div>
                     <div class="notion-actions">
                         <button class="btn btn-notion" id="testNotionBtn">Test Connection</button>
@@ -963,7 +967,8 @@
                 apiKey: '',
                 databaseId: '',
                 autoSync: true,
-                lastSync: null
+                lastSync: null,
+                filterHasPhone: true
             },
             notionPageIds: {} // Maps leadId to Notion page ID
         };
@@ -1267,6 +1272,13 @@
                 while (hasMore) {
                     const body = { page_size: 100 };
                     if (startCursor) body.start_cursor = startCursor;
+                    // Apply filter if enabled
+                    if (state.notion.filterHasPhone) {
+                        body.filter = {
+                            property: 'Phone',
+                            rich_text: { is_not_empty: true }
+                        };
+                    }
                     const result = await notionRequest(`/databases/${state.notion.databaseId}/query`, 'POST', body);
                     allPages = allPages.concat(result.results);
                     hasMore = result.has_more;
@@ -1414,6 +1426,7 @@
             document.getElementById('notionApiKey').value = state.notion.apiKey || '';
             document.getElementById('notionDatabaseId').value = state.notion.databaseId || '';
             document.getElementById('notionAutoSync').checked = state.notion.autoSync !== false;
+            document.getElementById('notionFilterHasPhone').checked = state.notion.filterHasPhone !== false;
             updateNotionStatusUI();
         }
 
@@ -1421,6 +1434,7 @@
             state.notion.apiKey = document.getElementById('notionApiKey').value.trim();
             state.notion.databaseId = document.getElementById('notionDatabaseId').value.trim().replace(/-/g, '');
             state.notion.autoSync = document.getElementById('notionAutoSync').checked;
+            state.notion.filterHasPhone = document.getElementById('notionFilterHasPhone').checked;
             saveState();
         }
 
@@ -2103,6 +2117,7 @@
             document.getElementById('notionApiKey').addEventListener('change', saveNotionSettings);
             document.getElementById('notionDatabaseId').addEventListener('change', saveNotionSettings);
             document.getElementById('notionAutoSync').addEventListener('change', saveNotionSettings);
+            document.getElementById('notionFilterHasPhone').addEventListener('change', saveNotionSettings);
 
             document.querySelectorAll('#historyTabs .history-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
