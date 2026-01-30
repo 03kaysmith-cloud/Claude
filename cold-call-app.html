@@ -690,6 +690,59 @@
         @media (max-width: 1024px) {
             .main-content.active { grid-template-columns: 1fr; }
         }
+
+        .objections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .objection-card {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .objection-card:hover {
+            border-color: #4299e1;
+            background: #ebf8ff;
+        }
+
+        .objection-card.selected {
+            border-color: #c53030;
+            background: #fed7d7;
+            color: #822727;
+        }
+
+        .objection-card .objection-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .objection-card .objection-response {
+            font-size: 11px;
+            color: #718096;
+            font-weight: 400;
+        }
+
+        .objection-card.selected .objection-response {
+            color: #822727;
+        }
+
+        .objections-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 <body>
@@ -834,16 +887,15 @@
 
     <!-- Notes Modal -->
     <div class="modal-overlay" id="notesModal">
-        <div class="modal">
+        <div class="modal" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 id="notesModalTitle">Call Notes</h3>
                 <button class="modal-close" id="closeNotesModal">&times;</button>
             </div>
             <div class="modal-body">
-                <textarea class="notes-textarea" id="callNotes" placeholder="Enter notes here... (Press Enter to save)"></textarea>
-                <div id="objectionsSection" style="display: none;">
-                    <label style="font-size: 13px; font-weight: 500; color: #4a5568; margin-bottom: 5px; display: block;">Objections</label>
-                    <textarea class="notes-textarea" id="callObjections" placeholder="Enter any objections raised..." style="min-height: 60px; font-size: 13px;"></textarea>
+                <div id="objectionsCardsSection" style="display: none;">
+                    <div class="objections-section-title">Select Any Objections Raised</div>
+                    <div class="objections-grid" id="objectionsGrid"></div>
                 </div>
                 <div class="notion-checkbox" id="dontFollowUpSection" style="display: none; margin-bottom: 15px;">
                     <input type="checkbox" id="dontFollowUpCheckbox">
@@ -993,6 +1045,22 @@
 
         const NTFY_TOPIC = 'cold-calling-hiveperform';
         const NTFY_URL = `https://ntfy.sh/${NTFY_TOPIC}`;
+
+        // Predefined objections with handling responses
+        const OBJECTIONS = [
+            { id: 'timing', title: 'Not the right time', response: 'Understand - when would be better to revisit?' },
+            { id: 'budget', title: 'No budget', response: 'What would need to change for this to become a priority?' },
+            { id: 'competitor', title: 'Using a competitor', response: 'What made you choose them? What would make you switch?' },
+            { id: 'happy', title: 'Happy with current solution', response: 'What would "better" look like for you?' },
+            { id: 'no_need', title: 'Don\'t see the need', response: 'How are you currently handling [pain point]?' },
+            { id: 'send_info', title: 'Just send info', response: 'Happy to - what specifically would be most relevant?' },
+            { id: 'decision_maker', title: 'Not the decision maker', response: 'Who else should be involved in this conversation?' },
+            { id: 'too_small', title: 'Company too small', response: 'When do you think it would make sense to revisit?' },
+            { id: 'internal', title: 'Building internally', response: 'What\'s your timeline? How\'s it going so far?' },
+            { id: 'busy', title: 'Too busy right now', response: 'Totally get it - when works better for a quick call?' },
+            { id: 'no_interest', title: 'Not interested', response: 'Fair enough - can I ask what made you say that?' },
+            { id: 'other', title: 'Other objection', response: 'Note specifics in call history' }
+        ];
 
         function getDefaultScripts() {
             return {
@@ -1685,13 +1753,14 @@
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
 
-            // Skip notes modal for "Didn't Ring" - just record and move on
-            if (status === 'didnt_ring') {
+            // Skip modal for "Didn't Ring" and "No Answer" - just record and move on
+            if (status === 'didnt_ring' || status === 'no_answer') {
                 addCallRecord(leadId, status, '', roleCategory, false);
                 moveToNext();
                 return;
             }
 
+            // Show modal only for answered calls (to track objections)
             showNotesModal(leadId, roleCategory, status);
         }
 
@@ -1728,26 +1797,49 @@
         // ============================================
         // NOTES MODAL
         // ============================================
+        let selectedObjections = [];
+
+        function renderObjectionsCards() {
+            const grid = document.getElementById('objectionsGrid');
+            grid.innerHTML = OBJECTIONS.map(obj => `
+                <div class="objection-card" data-objection-id="${obj.id}">
+                    <div class="objection-title">${obj.title}</div>
+                    <div class="objection-response">${obj.response}</div>
+                </div>
+            `).join('');
+
+            grid.querySelectorAll('.objection-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const objId = card.dataset.objectionId;
+                    if (selectedObjections.includes(objId)) {
+                        selectedObjections = selectedObjections.filter(id => id !== objId);
+                        card.classList.remove('selected');
+                    } else {
+                        selectedObjections.push(objId);
+                        card.classList.add('selected');
+                    }
+                });
+            });
+        }
+
         function showNotesModal(leadId, roleCategory, status) {
             const modal = document.getElementById('notesModal');
-            const textarea = document.getElementById('callNotes');
-            const objectionsTextarea = document.getElementById('callObjections');
-            const objectionsSection = document.getElementById('objectionsSection');
+            const objectionsCardsSection = document.getElementById('objectionsCardsSection');
             const snapshotContainer = document.getElementById('scriptSnapshotContent');
             const snapshotSection = document.getElementById('scriptSnapshotSection');
             const dontFollowUpSection = document.getElementById('dontFollowUpSection');
             const dontFollowUpCheckbox = document.getElementById('dontFollowUpCheckbox');
 
-            const titleMap = { 'answered': 'Call Notes - Answered', 'no_answer': 'Call Notes - No Answer', 'didnt_ring': 'Call Notes - Didn\'t Ring' };
-            document.getElementById('notesModalTitle').textContent = titleMap[status] || 'Call Notes';
-            textarea.value = '';
-            objectionsTextarea.value = '';
+            const titleMap = { 'answered': 'Call Outcome - Answered', 'no_answer': 'Call Outcome - No Answer', 'didnt_ring': 'Call Outcome - Didn\'t Ring' };
+            document.getElementById('notesModalTitle').textContent = titleMap[status] || 'Call Outcome';
             dontFollowUpCheckbox.checked = false;
+            selectedObjections = [];
 
             if (status === 'answered') {
                 snapshotSection.style.display = 'block';
                 dontFollowUpSection.style.display = 'flex';
-                objectionsSection.style.display = 'block';
+                objectionsCardsSection.style.display = 'block';
+                renderObjectionsCards();
                 const snapshot = getCurrentScriptSnapshot(roleCategory);
                 const sectionLabels = { openingLine: 'Opening Line', painPoint: 'Pain Point', discoveryQuestions: 'Discovery Questions', ourSolution: 'Our Solution', valueStatement: 'Value Statement' };
                 snapshotContainer.innerHTML = snapshot.map(s => `
@@ -1759,27 +1851,32 @@
             } else {
                 snapshotSection.style.display = 'none';
                 dontFollowUpSection.style.display = 'none';
-                objectionsSection.style.display = 'none';
+                objectionsCardsSection.style.display = 'none';
             }
 
             modal.dataset.leadId = leadId;
             modal.dataset.roleCategory = roleCategory;
             modal.dataset.status = status;
             modal.classList.add('active');
-            setTimeout(() => textarea.focus(), 100);
         }
 
         function hideNotesModal() { document.getElementById('notesModal').classList.remove('active'); }
 
         function saveNotesAndContinue() {
             const modal = document.getElementById('notesModal');
-            const notes = document.getElementById('callNotes').value;
-            const objections = document.getElementById('callObjections').value;
             const dontFollowUp = document.getElementById('dontFollowUpCheckbox').checked;
             const leadId = modal.dataset.leadId;
             const roleCategory = modal.dataset.roleCategory;
             const status = modal.dataset.status;
-            addCallRecord(leadId, status, notes, roleCategory, dontFollowUp, objections);
+
+            // Convert selected objection IDs to readable text
+            const objectionTexts = selectedObjections.map(id => {
+                const obj = OBJECTIONS.find(o => o.id === id);
+                return obj ? obj.title : id;
+            });
+            const objections = objectionTexts.join(', ');
+
+            addCallRecord(leadId, status, '', roleCategory, dontFollowUp, objections);
             hideNotesModal();
             moveToNext();
         }
@@ -2249,7 +2346,7 @@
             document.getElementById('editorModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) hideEditor(); });
             document.getElementById('historyModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) hideHistory(); });
 
-            document.getElementById('callNotes').addEventListener('keydown', (e) => {
+            document.getElementById('notesModal').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNotesAndContinue(); }
             });
         });
