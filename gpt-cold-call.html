@@ -2733,13 +2733,11 @@
                 });
             });
 
-            document.getElementById('filterAnswered').addEventListener('change', (e) => { state.filters.answered = e.target.checked; applyFilters(); saveState(); });
             document.getElementById('filterNoAnswer').addEventListener('change', (e) => { state.filters.noAnswer = e.target.checked; applyFilters(); saveState(); });
             document.getElementById('filterNotCalled').addEventListener('change', (e) => { state.filters.notCalled = e.target.checked; applyFilters(); saveState(); });
             document.getElementById('filterRole').addEventListener('change', (e) => { state.filters.role = e.target.value; applyFilters(); saveState(); });
             document.getElementById('filterRegion').addEventListener('change', (e) => { state.filters.region = e.target.value; applyFilters(); saveState(); });
 
-            document.getElementById('filterAnswered').checked = state.filters.answered;
             document.getElementById('filterNoAnswer').checked = state.filters.noAnswer;
             document.getElementById('filterNotCalled').checked = state.filters.notCalled;
             document.getElementById('filterRole').value = state.filters.role;
