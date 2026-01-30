@@ -1558,7 +1558,10 @@
                     }
                     state.scripts = newScripts;
                     saveState();
-                    renderScript();
+                    const lead = state.filteredLeads[state.currentIndex];
+                    if (lead) {
+                        renderScripts(categorizeRole(lead.role), lead);
+                    }
                     if (statusEl && !options.suppressStatus) {
                         statusEl.className = 'notion-status connected';
                         statusEl.textContent = `Pulled scripts for ${Object.keys(newScripts).length} roles`;
