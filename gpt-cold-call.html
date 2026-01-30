@@ -991,7 +991,7 @@
                         </div>
                     </div>
                     <div class="notion-actions">
-                        <button class="btn btn-primary" id="notionSyncBtn">↻ Sync</button>
+                        <button class="btn btn-primary" id="notionSyncBtn">↻ Sync Scripts</button>
                     </div>
                     <small style="display: block; margin-top: 15px; color: #718096;">
                     <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Last Call, Cold Call Notes, Cold Call Status, Objections<br>
@@ -2701,7 +2701,7 @@
             });
             document.getElementById('notionSyncBtn').addEventListener('click', () => {
                 saveNotionSettings();
-                syncNotionData();
+                syncScriptsToNotion();
             });
             document.getElementById('notionApiKey').addEventListener('change', saveNotionSettings);
             document.getElementById('notionDatabaseId').addEventListener('change', saveNotionSettings);
