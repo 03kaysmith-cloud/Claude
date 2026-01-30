@@ -989,7 +989,7 @@
                         <button class="btn btn-success" id="syncToNotionBtn">↑ Push to Notion</button>
                     </div>
                     <small style="display: block; margin-top: 15px; color: #718096;">
-                        <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Cold Call Notes, Cold Call Status, Objections<br>
+                    <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Last Call, Cold Call Notes, Cold Call Status, Objections<br>
                         <strong>Scripts DB columns:</strong> Component (select), Script (rich_text), Script Name (title), Role of Lead (multi-select)
                     </small>
                 </div>
@@ -1381,6 +1381,7 @@
                     const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
                     const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
                     const objections = getNotionPropertyValue(page, 'Objections') || '';
+                    const lastCallDate = getNotionPropertyValue(page, 'Last Call');
 
                     const lead = {
                         company: getNotionPropertyValue(page, 'Company'),
@@ -1393,6 +1394,7 @@
                         linkedInUrl: getNotionPropertyValue(page, 'LinkedIn URL'),
                         objections: objections,
                         callNotes: coldCallNotes || '',
+                        lastCall: lastCallDate || null,
                         notionPageId: page.id
                     };
                     // Store page ID mapping
@@ -1421,11 +1423,15 @@
                         // Create history entries based on call count
                         state.callHistory[leadId] = [];
                         for (let i = 0; i < callCount; i++) {
+                            const isLastCall = i === callCount - 1;
+                            const callDate = isLastCall && lastCallDate
+                                ? new Date(lastCallDate).toISOString()
+                                : new Date().toISOString();
                             state.callHistory[leadId].push({
-                                date: new Date().toISOString(),
-                                status: (i === callCount - 1) ? localStatus : 'no_answer', // Last call has actual status
-                                notes: (i === callCount - 1) ? coldCallNotes : '', // Notes only on last call
-                                objections: (i === callCount - 1) ? objections : '', // Objections only on last call
+                                date: callDate,
+                                status: isLastCall ? localStatus : 'no_answer', // Last call has actual status
+                                notes: isLastCall ? coldCallNotes : '', // Notes only on last call
+                                objections: isLastCall ? objections : '', // Objections only on last call
                                 dontFollowUp: false,
                                 rep: 'Imported'
                             });
@@ -1498,10 +1504,14 @@
             const objectionNotes = state.leadObjections?.[leadId] || lead.objections || '';
             // Use objection notes as the primary objection content for syncing
             const allObjections = objectionNotes;
+            const lastCallDate = lastCall.date
+                ? new Date(lastCall.date).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0];
 
             try {
                 const properties = {
                     'No. of Calls': { number: callCount },
+                    'Last Call': { date: { start: lastCallDate } },
                     'Cold Call Notes': { rich_text: [{ text: { content: allNotes.substring(0, 2000) } }] },
                     'Call': { select: { name: callStatus } },
                     'Objections': { rich_text: [{ text: { content: allObjections.substring(0, 2000) } }] }
@@ -1933,8 +1943,9 @@
 
         function addCallRecord(leadId, status, notes, roleCategory, dontFollowUp = false, objections = '') {
             if (!state.callHistory[leadId]) state.callHistory[leadId] = [];
+            const callDate = new Date().toISOString();
             state.callHistory[leadId].push({
-                date: new Date().toISOString(),
+                date: callDate,
                 status,
                 notes,
                 objections,
@@ -1942,10 +1953,13 @@
                 scriptSnapshot: status === 'answered' ? getCurrentScriptSnapshot(roleCategory) : null,
                 rep: state.currentRep
             });
+            const lead = state.leads.find(l => generateLeadId(l) === leadId);
+            if (lead) {
+                lead.lastCall = callDate;
+            }
             saveState();
 
             // Sync to Notion if enabled
-            const lead = state.leads.find(l => generateLeadId(l) === leadId);
             if (lead && state.notion.enabled && state.notion.autoSync) {
                 syncLeadToNotion(lead, leadId);
             }
@@ -2268,8 +2282,8 @@
 
             container.innerHTML = items.map(item => {
                 const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : item.status === 'do_not_call' ? 'do-not-call' : '';
-                const isImported = item.history && item.history.rep === 'Imported';
-                const dateDisplay = item.history ? (isImported ? 'Imported from Notion' : formatDate(item.history.date)) : '';
+                const lastCallDate = item.history?.date || item.lead.lastCall;
+                const dateDisplay = lastCallDate ? formatDate(lastCallDate) : '';
                 return `
                     <div class="history-item ${statusClass}">
                         <div class="history-item-header">
@@ -2302,7 +2316,8 @@
                 const history = state.callHistory[leadId] || [];
                 const lastCall = history[history.length - 1];
                 const callStatus = lastCall ? (lastCall.status === 'answered' ? 'Answered' : 'No Answer') : 'Not Called';
-                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, history.length, lastCall ? formatDate(lastCall.date) : '', lastCall && lastCall.notes ? lastCall.notes : ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
+                const lastCallDate = lastCall ? lastCall.date : lead.lastCall;
+                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, history.length, lastCallDate ? formatDate(lastCallDate) : '', lastCall && lastCall.notes ? lastCall.notes : ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
             });
             const csv = [headers.join(','), ...rows].join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
