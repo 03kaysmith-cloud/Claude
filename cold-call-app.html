@@ -755,12 +755,18 @@
             </div>
         </header>
 
-        <section class="upload-section" id="uploadSection">
+        <section class="upload-section hidden" id="uploadSection">
             <h2>Get Started</h2>
             <p>Connect to Notion to import your leads and scripts</p>
             <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
                 <button class="upload-label" id="connectNotionBtn" style="background: #000; border: none; cursor: pointer;">📝 Connect Notion</button>
             </div>
+        </section>
+
+        <section class="upload-section" id="loadingSection">
+            <h2>Syncing from Notion...</h2>
+            <p>Loading your leads and scripts</p>
+            <div style="margin-top: 20px; font-size: 32px;" id="loadingSpinner">⏳</div>
         </section>
 
         <section class="filters-bar" id="filtersBar">
@@ -1639,9 +1645,8 @@
                         statusEl.className = 'notion-status connected';
                         statusEl.textContent = `Pulled scripts for ${Object.keys(newScripts).length} roles`;
                     }
-                    alert(`Successfully imported scripts for ${Object.keys(newScripts).length} roles from Notion!`);
                 } else {
-                    throw new Error('No valid scripts found in database. Check column names: Role, Section, Version Name, Content');
+                    throw new Error('No valid scripts found in database');
                 }
             } catch (error) {
                 console.error('Script sync error:', error);
@@ -1649,7 +1654,6 @@
                     statusEl.className = 'notion-status disconnected';
                     statusEl.textContent = `Script sync failed: ${error.message}`;
                 }
-                alert(`Failed to sync scripts: ${error.message}`);
             }
         }
 
@@ -2339,28 +2343,40 @@
                     };
                     state.notionPageIds = data.notionPageIds || {};
                     state.isFirstLoad = false;
-                    if (state.leads.length > 0) { showMainContent(); applyFilters(); }
+                    // Don't show main content yet - let auto-sync handle it
                 } catch (e) { console.error('Error loading state:', e); }
             }
             // Auto-sync from Notion on load (always sync with defaults)
-            setTimeout(() => {
-                const apiKey = state.notion.apiKey || DEFAULT_NOTION.apiKey;
-                const dbId = state.notion.databaseId || DEFAULT_NOTION.databaseId;
-                const scriptsDbId = state.notion.scriptsDatabaseId || DEFAULT_NOTION.scriptsDatabaseId;
+            const apiKey = state.notion.apiKey || DEFAULT_NOTION.apiKey;
+            const dbId = state.notion.databaseId || DEFAULT_NOTION.databaseId;
+            const scriptsDbId = state.notion.scriptsDatabaseId || DEFAULT_NOTION.scriptsDatabaseId;
 
-                // Ensure defaults are set
-                state.notion.apiKey = apiKey;
-                state.notion.databaseId = dbId;
-                state.notion.scriptsDatabaseId = scriptsDbId;
+            // Ensure defaults are set
+            state.notion.apiKey = apiKey;
+            state.notion.databaseId = dbId;
+            state.notion.scriptsDatabaseId = scriptsDbId;
 
-                if (apiKey && dbId) {
-                    syncFromNotion().then(() => {
-                        if (scriptsDbId) {
-                            syncScriptsFromNotion();
-                        }
-                    });
+            // Always auto-sync on load
+            syncFromNotion().then(() => {
+                if (scriptsDbId) {
+                    return syncScriptsFromNotion();
                 }
-            }, 500);
+            }).then(() => {
+                // After sync completes, show main content
+                if (state.leads.length > 0) {
+                    showMainContent();
+                    applyFilters();
+                } else {
+                    // No leads found, show upload section for manual config
+                    document.getElementById('loadingSection').classList.add('hidden');
+                    document.getElementById('uploadSection').classList.remove('hidden');
+                }
+            }).catch(err => {
+                console.error('Auto-sync failed:', err);
+                // Show upload section if sync fails
+                document.getElementById('loadingSection').classList.add('hidden');
+                document.getElementById('uploadSection').classList.remove('hidden');
+            });
         }
 
         // ============================================
@@ -2374,6 +2390,7 @@
 
         function showMainContent() {
             document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.add('hidden');
             document.getElementById('mainContent').classList.add('active');
             document.getElementById('filtersBar').classList.add('active');
             document.getElementById('historyBtn').style.display = 'inline-flex';
@@ -2382,7 +2399,15 @@
         }
 
         function resetForNewUpload() {
+            document.getElementById('loadingSection').classList.add('hidden');
             document.getElementById('uploadSection').classList.remove('hidden');
+            document.getElementById('mainContent').classList.remove('active');
+            document.getElementById('filtersBar').classList.remove('active');
+        }
+
+        function showLoadingScreen() {
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('loadingSection').classList.remove('hidden');
             document.getElementById('mainContent').classList.remove('active');
             document.getElementById('filtersBar').classList.remove('active');
         }
