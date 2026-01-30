@@ -314,6 +314,7 @@
             line-height: 1.6;
             color: #2d3748;
             border-left: 3px solid #4299e1;
+            white-space: pre-line;
         }
 
         .filters-bar {
@@ -1125,8 +1126,8 @@
             const prop = page.properties[propertyName];
             if (!prop) return '';
             switch (prop.type) {
-                case 'title': return prop.title?.[0]?.plain_text || '';
-                case 'rich_text': return prop.rich_text?.[0]?.plain_text || '';
+                case 'title': return prop.title?.map(item => item.plain_text).join('') || '';
+                case 'rich_text': return prop.rich_text?.map(item => item.plain_text).join('') || '';
                 case 'phone_number': return prop.phone_number || '';
                 case 'url': return prop.url || '';
                 case 'number': return prop.number || 0;
