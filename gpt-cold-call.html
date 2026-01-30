@@ -1538,15 +1538,9 @@
                 followUp = lastCall.dontFollowUp ? "Don't follow up" : 'Follow up';
             }
 
-            // Get call notes from leadCallNotes state (the text box in script panel)
-            const callNotes = state.leadCallNotes?.[leadId] || lead.callNotes || '';
-            // Combine with history notes if any
-            const historyNotes = history.map(h => {
-                if (!h.notes) return null;
-                const date = new Date(h.date).toLocaleDateString('en-GB');
-                return `[${date}] ${h.notes}`;
-            }).filter(n => n).join('\n\n');
-            const allNotes = callNotes ? (historyNotes ? `${callNotes}\n\n${historyNotes}` : callNotes) : historyNotes;
+            // Get call notes from the latest call (do not append history on each sync)
+            const callNotes = lastCall?.notes || state.leadCallNotes?.[leadId] || lead.callNotes || '';
+            const allNotes = callNotes;
 
             // Get objection notes from leadObjections (the text box) or lead.objections
             const objectionNotes = state.leadObjections?.[leadId] || lead.objections || '';
