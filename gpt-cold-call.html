@@ -448,114 +448,7 @@
         .editor-modal { max-width: 900px; }
         .history-modal { max-width: 800px; }
 
-        .editor-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .editor-tab {
-            padding: 10px 20px;
-            background: #edf2f7;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: #4a5568;
-            transition: all 0.2s;
-        }
-
-        .editor-tab:hover { background: #e2e8f0; }
-        .editor-tab.active { background: #4299e1; color: white; }
-
-        .editor-section {
-            margin-bottom: 24px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .editor-section-header {
-            background: #f7fafc;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .editor-section-title { font-weight: 600; color: #2d3748; }
-        .editor-section-actions { display: flex; gap: 8px; }
-
-        .editor-version-tabs {
-            display: flex;
-            background: #edf2f7;
-            padding: 8px;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-
-        .editor-version-tab {
-            padding: 6px 12px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-        }
-
-        .editor-version-tab:hover { border-color: #4299e1; }
-        .editor-version-tab.active { background: #4299e1; color: white; border-color: #4299e1; }
-        .editor-version-tab .delete-version { margin-left: 6px; color: #f56565; font-weight: bold; }
-
-        .editor-content { padding: 16px; }
-
-        .editor-content textarea {
-            width: 100%;
-            min-height: 100px;
-            padding: 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
-            resize: vertical;
-        }
-
-        .editor-content textarea:focus { outline: none; border-color: #4299e1; }
-
-        .editor-version-name { display: flex; gap: 8px; margin-bottom: 10px; }
-
-        .editor-version-name input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 13px;
-        }
-
-        .editor-stats {
-            background: #ebf8ff;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            color: #2b6cb0;
-        }
-
-        .add-version-btn {
-            padding: 6px 12px;
-            background: #48bb78;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .add-version-btn:hover { background: #38a169; }
+        
 
         .delete-btn {
             padding: 6px 12px;
@@ -941,10 +834,6 @@
                 <button class="modal-close" id="closeEditorModal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="editor-stats" id="editorStats">Total calls answered: <strong>0</strong></div>
-                <div class="editor-tabs" id="editorTabs"></div>
-                <div id="editorContent"></div>
-
                 <div class="rep-manager">
                     <h4>Sales Reps</h4>
                     <div class="rep-list" id="repList"></div>
@@ -1001,7 +890,6 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="closeEditor">Close</button>
-                <button class="btn btn-primary" id="saveScripts">Save Changes</button>
             </div>
         </div>
     </div>
@@ -1042,10 +930,6 @@
                 notCalled: true,
                 role: 'all',
                 region: 'all'
-            },
-            editorState: {
-                activeRole: 'CEO_FOUNDER',
-                activeVersions: {}
             },
             pushNotifications: true,
             lastNotifiedLeadId: null,
@@ -1496,7 +1380,7 @@
                     statusEl.className = 'notion-status connected';
                     statusEl.textContent = `Synced ${state.leads.length} leads from Notion`;
                 }
-                if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Sync';
+                if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Sync Scripts';
 
                 showMainContent();
                 applyFilters();
@@ -1507,7 +1391,7 @@
                     statusEl.className = 'notion-status disconnected';
                     statusEl.textContent = `Sync failed: ${error.message}`;
                 }
-                if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Sync';
+                if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Sync Scripts';
                 alert('Failed to sync from Notion: ' + error.message);
             }
         }
@@ -1567,38 +1451,6 @@
                 await notionRequest(`/pages/${pageId}`, 'PATCH', { properties });
             } catch (error) {
                 console.error('Failed to sync lead to Notion:', error);
-            }
-        }
-
-        async function syncAllToNotion(options = {}) {
-            if (!state.notion.apiKey || !state.notion.databaseId) {
-                alert('Please enter your Notion API key and Database ID in Settings');
-                return;
-            }
-            const statusEl = document.getElementById('notionStatus');
-            if (statusEl && !options.suppressStatus) {
-                statusEl.className = 'notion-status syncing';
-                statusEl.textContent = 'Pushing to Notion...';
-            }
-
-            try {
-                let synced = 0;
-                for (const lead of state.leads) {
-                    const leadId = generateLeadId(lead);
-                    if (state.notionPageIds[leadId]) {
-                        await syncLeadToNotion(lead, leadId);
-                        synced++;
-                    }
-                }
-                if (statusEl && !options.suppressStatus) {
-                    statusEl.className = 'notion-status connected';
-                    statusEl.textContent = `Pushed ${synced} leads to Notion`;
-                }
-            } catch (error) {
-                if (statusEl && !options.suppressStatus) {
-                    statusEl.className = 'notion-status disconnected';
-                    statusEl.textContent = `Push failed: ${error.message}`;
-                }
             }
         }
 
@@ -1723,95 +1575,6 @@
             }
         }
 
-        async function fetchNotionScriptPageMap() {
-            let allPages = [];
-            let hasMore = true;
-            let startCursor = undefined;
-            while (hasMore) {
-                const body = { page_size: 100 };
-                if (startCursor) body.start_cursor = startCursor;
-                const result = await notionRequest(`/databases/${state.notion.scriptsDatabaseId}/query`, 'POST', body);
-                allPages = allPages.concat(result.results);
-                hasMore = result.has_more;
-                startCursor = result.next_cursor;
-            }
-            const pageMap = {};
-            for (const page of allPages) {
-                const roleValues = getNotionMultiSelectValues(page, 'Role of Lead').length
-                    ? getNotionMultiSelectValues(page, 'Role of Lead')
-                    : getNotionMultiSelectValues(page, 'Role');
-                const roleLabel = roleValues.includes('ALL') ? 'ALL' : (roleValues[0] || getNotionPropertyValue(page, 'Role of Lead') || getNotionPropertyValue(page, 'Role') || '');
-                const component = getNotionPropertyValue(page, 'Component') || getNotionPropertyValue(page, 'Section') || '';
-                const scriptName = getNotionPropertyValue(page, 'Script Name') || getNotionPropertyValue(page, 'Name') || 'Default';
-                const key = buildScriptKey(roleLabel, component, scriptName);
-                if (roleLabel && component && scriptName) pageMap[key] = page.id;
-            }
-            return pageMap;
-        }
-
-        async function syncScriptsToNotion(options = {}) {
-            if (!state.notion.apiKey || !state.notion.scriptsDatabaseId) {
-                alert('Please enter your Notion API key and Scripts Database ID in Settings');
-                return;
-            }
-            const statusEl = document.getElementById('notionStatus');
-            if (statusEl && !options.suppressStatus) {
-                statusEl.className = 'notion-status syncing';
-                statusEl.textContent = 'Pushing scripts to Notion...';
-            }
-
-            try {
-                const existingPages = await fetchNotionScriptPageMap();
-                let created = 0;
-                let updated = 0;
-
-                for (const [roleKey, sections] of Object.entries(state.scripts)) {
-                    for (const [sectionKey, versions] of Object.entries(sections)) {
-                        if (!Array.isArray(versions)) continue;
-                        const componentLabel = getComponentLabel(sectionKey);
-                        for (const version of versions) {
-                            const scriptName = version.name || 'Default';
-                            const content = version.content || '';
-                            if (!content.trim()) continue;
-                            const roleLabel = sectionKey === 'openingLine' ? 'ALL' : getRoleLabelFromKey(roleKey);
-                            const scriptKey = buildScriptKey(roleLabel, componentLabel, scriptName);
-                            const properties = {
-                                'Component': { select: { name: componentLabel } },
-                                'Script': { rich_text: [{ text: { content: content.substring(0, 2000) } }] },
-                                'Script Name': { title: [{ text: { content: scriptName.substring(0, 200) } }] },
-                                'Role of Lead': { multi_select: [{ name: roleLabel }] }
-                            };
-
-                            if (existingPages[scriptKey]) {
-                                await notionRequest(`/pages/${existingPages[scriptKey]}`, 'PATCH', { properties });
-                                updated++;
-                            } else {
-                                const createdPage = await notionRequest('/pages', 'POST', {
-                                    parent: { database_id: state.notion.scriptsDatabaseId },
-                                    properties
-                                });
-                                existingPages[scriptKey] = createdPage.id;
-                                created++;
-                            }
-                        }
-                    }
-                }
-
-                if (statusEl && !options.suppressStatus) {
-                    statusEl.className = 'notion-status connected';
-                    statusEl.textContent = `Pushed scripts (${updated} updated, ${created} created)`;
-                }
-                state.notionScriptPageIds = existingPages;
-                saveState();
-            } catch (error) {
-                console.error('Failed to sync scripts to Notion:', error);
-                if (statusEl && !options.suppressStatus) {
-                    statusEl.className = 'notion-status disconnected';
-                    statusEl.textContent = `Script push failed: ${error.message}`;
-                }
-            }
-        }
-
         async function syncNotionData() {
             if (!state.notion.apiKey || !state.notion.databaseId || !state.notion.scriptsDatabaseId) {
                 alert('Please enter your Notion API key and both Database IDs in Settings');
@@ -1828,8 +1591,6 @@
             try {
                 await syncFromNotion({ suppressStatus: true });
                 await syncScriptsFromNotion({ suppressStatus: true });
-                await syncAllToNotion({ suppressStatus: true });
-                await syncScriptsToNotion({ suppressStatus: true });
                 state.notion.lastSync = new Date().toISOString();
                 state.notion.enabled = true;
                 saveState();
@@ -1844,7 +1605,7 @@
                     statusEl.textContent = `Sync failed: ${error.message}`;
                 }
             } finally {
-                if (syncBtn) syncBtn.textContent = '↻ Sync';
+                if (syncBtn) syncBtn.textContent = '↻ Sync Scripts';
             }
         }
 
@@ -2164,9 +1925,6 @@
             // Sync to Notion if enabled
             if (lead && state.notion.enabled && state.notion.autoSync) {
                 syncLeadToNotion(lead, leadId);
-                if (state.notion.scriptsDatabaseId) {
-                    syncScriptsToNotion({ suppressStatus: true });
-                }
             }
         }
 
@@ -2260,12 +2018,7 @@
         // ============================================
         function showEditor() {
             const modal = document.getElementById('editorModal');
-            state.editorState.activeRole = 'CEO_FOUNDER';
-            state.editorState.activeVersions = {};
-            renderEditorTabs();
-            renderEditorContent();
             renderRepList();
-            updateEditorStats();
             loadNotionSettings();
             // Load push notifications setting
             document.getElementById('pushNotificationsToggle').checked = state.pushNotifications;
@@ -2273,126 +2026,6 @@
         }
 
         function hideEditor() { document.getElementById('editorModal').classList.remove('active'); }
-
-        function renderEditorTabs() {
-            const container = document.getElementById('editorTabs');
-            const roles = ['CEO_FOUNDER', 'CRO', 'HEAD_OF_SALES', 'SALES_ENABLEMENT'];
-            container.innerHTML = roles.map(role => `
-                <button class="editor-tab ${state.editorState.activeRole === role ? 'active' : ''}" data-role="${role}">${getRoleCategoryLabel(role)}</button>
-            `).join('');
-            container.querySelectorAll('.editor-tab').forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    state.editorState.activeRole = e.target.dataset.role;
-                    state.editorState.activeVersions = {};
-                    renderEditorTabs();
-                    renderEditorContent();
-                });
-            });
-        }
-
-        function renderEditorContent() {
-            const container = document.getElementById('editorContent');
-            const role = state.editorState.activeRole;
-            const scripts = state.scripts[role];
-            const sections = [
-                { key: 'openingLine', title: 'Opening Line' },
-                { key: 'painPoint', title: 'Pain Point' },
-                { key: 'discoveryQuestions', title: 'Discovery Questions' },
-                { key: 'ourSolution', title: 'Our Solution' },
-                { key: 'valueStatement', title: 'Value Statement' }
-            ];
-
-            container.innerHTML = sections.map(section => {
-                const versions = scripts[section.key] || [];
-                const activeVersion = state.editorState.activeVersions[section.key] || 0;
-                const currentVersion = versions[activeVersion] || { name: '', content: '' };
-                return `
-                    <div class="editor-section" data-section="${section.key}">
-                        <div class="editor-section-header">
-                            <span class="editor-section-title">${section.title}</span>
-                            <div class="editor-section-actions">
-                                <button class="add-version-btn" data-section="${section.key}">+ Add Version</button>
-                            </div>
-                        </div>
-                        <div class="editor-version-tabs">
-                            ${versions.map((v, i) => `
-                                <button class="editor-version-tab ${i === activeVersion ? 'active' : ''}" data-section="${section.key}" data-index="${i}">
-                                    ${v.name}${versions.length > 1 ? `<span class="delete-version" data-section="${section.key}" data-index="${i}">×</span>` : ''}
-                                </button>
-                            `).join('')}
-                        </div>
-                        <div class="editor-content">
-                            <div class="editor-version-name">
-                                <input type="text" placeholder="Version name" value="${currentVersion.name}" data-section="${section.key}" data-field="name">
-                                ${versions.length > 1 ? `<button class="delete-btn" data-section="${section.key}" data-index="${activeVersion}">Delete</button>` : ''}
-                            </div>
-                            <textarea data-section="${section.key}" data-field="content">${currentVersion.content}</textarea>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            container.querySelectorAll('.editor-version-tab').forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('delete-version')) return;
-                    state.editorState.activeVersions[e.currentTarget.dataset.section] = parseInt(e.currentTarget.dataset.index);
-                    renderEditorContent();
-                });
-            });
-            container.querySelectorAll('.delete-version').forEach(btn => {
-                btn.addEventListener('click', (e) => { e.stopPropagation(); deleteVersion(e.target.dataset.section, parseInt(e.target.dataset.index)); });
-            });
-            container.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => { deleteVersion(e.target.dataset.section, parseInt(e.target.dataset.index)); });
-            });
-            container.querySelectorAll('.add-version-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => { addVersion(e.target.dataset.section); });
-            });
-            container.querySelectorAll('input[data-field="name"]').forEach(input => {
-                input.addEventListener('input', (e) => {
-                    const activeVersion = state.editorState.activeVersions[e.target.dataset.section] || 0;
-                    state.scripts[state.editorState.activeRole][e.target.dataset.section][activeVersion].name = e.target.value;
-                });
-            });
-            container.querySelectorAll('textarea[data-field="content"]').forEach(textarea => {
-                textarea.addEventListener('input', (e) => {
-                    const activeVersion = state.editorState.activeVersions[e.target.dataset.section] || 0;
-                    state.scripts[state.editorState.activeRole][e.target.dataset.section][activeVersion].content = e.target.value;
-                });
-            });
-        }
-
-        function addVersion(section) {
-            state.scripts[state.editorState.activeRole][section].push({ name: 'New Version', content: '' });
-            state.editorState.activeVersions[section] = state.scripts[state.editorState.activeRole][section].length - 1;
-            renderEditorContent();
-        }
-
-        function deleteVersion(section, index) {
-            if (state.scripts[state.editorState.activeRole][section].length <= 1) return;
-            state.scripts[state.editorState.activeRole][section].splice(index, 1);
-            if ((state.editorState.activeVersions[section] || 0) >= state.scripts[state.editorState.activeRole][section].length) {
-                state.editorState.activeVersions[section] = state.scripts[state.editorState.activeRole][section].length - 1;
-            }
-            renderEditorContent();
-        }
-
-        function updateEditorStats() {
-            let totalAnswered = 0;
-            Object.values(state.callHistory).forEach(history => {
-                history.forEach(call => { if (call.status === 'answered') totalAnswered++; });
-            });
-            document.getElementById('editorStats').innerHTML = `Total calls answered: <strong>${totalAnswered}</strong>`;
-        }
-
-        function saveScripts() {
-            saveState();
-            hideEditor();
-            if (state.filteredLeads.length > 0) {
-                const lead = state.filteredLeads[state.currentIndex];
-                renderScripts(categorizeRole(lead.role), lead);
-            }
-        }
 
         // ============================================
         // REP MANAGEMENT
@@ -2675,7 +2308,6 @@
             document.getElementById('editBtn').addEventListener('click', showEditor);
             document.getElementById('closeEditorModal').addEventListener('click', hideEditor);
             document.getElementById('closeEditor').addEventListener('click', hideEditor);
-            document.getElementById('saveScripts').addEventListener('click', saveScripts);
             document.getElementById('historyBtn').addEventListener('click', showHistory);
             document.getElementById('closeHistoryModal').addEventListener('click', hideHistory);
             document.getElementById('addRepBtn').addEventListener('click', addRep);
@@ -2710,7 +2342,7 @@
             });
             document.getElementById('notionSyncBtn').addEventListener('click', () => {
                 saveNotionSettings();
-                syncScriptsToNotion();
+                syncScriptsFromNotion();
             });
             document.getElementById('notionApiKey').addEventListener('change', saveNotionSettings);
             document.getElementById('notionDatabaseId').addEventListener('change', saveNotionSettings);
