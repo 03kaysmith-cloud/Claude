@@ -773,9 +773,6 @@
             <div class="filters-row">
                 <div class="filter-group">
                     <label>Status:</label>
-                    <label class="filter-checkbox answered">
-                        <input type="checkbox" id="filterAnswered"> Answered
-                    </label>
                     <label class="filter-checkbox no-answer">
                         <input type="checkbox" id="filterNoAnswer"> No Answer
                     </label>
@@ -863,6 +860,10 @@
                         <span class="icon">✕</span>
                         Didn't Ring
                     </button>
+                    <button class="call-action-btn skip" id="btnSkip" style="background: #718096;">
+                        <span class="icon">→</span>
+                        Skip
+                    </button>
                 </div>
 
                 <div class="lead-navigation">
@@ -872,6 +873,7 @@
                         <span class="keyboard-hint"><kbd>1</kbd> Answered</span>
                         <span class="keyboard-hint"><kbd>2</kbd> No Answer</span>
                         <span class="keyboard-hint"><kbd>3</kbd> Didn't Ring</span>
+                        <span class="keyboard-hint"><kbd>4</kbd> Skip</span>
                     </div>
                 </div>
             </div>
@@ -885,6 +887,18 @@
                     </div>
                 </div>
                 <div id="scriptSections"></div>
+
+                <!-- Objection Handling Section -->
+                <div class="script-section" id="objectionHandlingSection">
+                    <h4>Objection Handling</h4>
+                    <div class="objections-grid" id="scriptObjectionsGrid"></div>
+                </div>
+
+                <!-- Objection Notes -->
+                <div class="script-section" id="objectionNotesSection">
+                    <h4>Call Objection Notes</h4>
+                    <textarea id="objectionNotesInput" placeholder="Note any objections raised during the call..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                </div>
             </div>
         </main>
     </div>
@@ -1050,7 +1064,8 @@
                 lastSync: null,
                 filterHasPhone: true
             },
-            notionPageIds: {} // Maps leadId to Notion page ID
+            notionPageIds: {}, // Maps leadId to Notion page ID
+            leadObjections: {} // Maps leadId to objection notes text
         };
 
         const CORS_PROXY = 'https://corsproxy.io/?';
@@ -1382,6 +1397,12 @@
                 }
 
                 state.leads = allPages.map(page => {
+                    // Load existing call data from Notion
+                    const callCount = getNotionPropertyValue(page, 'No. of Calls') || 0;
+                    const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
+                    const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
+                    const objections = getNotionPropertyValue(page, 'Objections') || '';
+
                     const lead = {
                         company: getNotionPropertyValue(page, 'Company'),
                         location: getNotionPropertyValue(page, 'Location'),
@@ -1391,17 +1412,16 @@
                         role: getNotionPropertyValue(page, 'Role'),
                         qualifyingSignals: getNotionPropertyValue(page, 'Qualifying Signals'),
                         linkedInUrl: getNotionPropertyValue(page, 'LinkedIn URL'),
+                        objections: objections,
                         notionPageId: page.id
                     };
                     // Store page ID mapping
                     const leadId = generateLeadId(lead);
                     state.notionPageIds[leadId] = page.id;
-
-                    // Load existing call data from Notion
-                    const callCount = getNotionPropertyValue(page, 'No. of Calls') || 0;
-                    const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
-                    const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
-                    const objections = getNotionPropertyValue(page, 'Objections');
+                    // Store objection notes
+                    if (objections) {
+                        state.leadObjections[leadId] = objections;
+                    }
 
                     // If there's call history in Notion, populate local state
                     if (callCount > 0 && !state.callHistory[leadId]) {
@@ -1486,8 +1506,10 @@
                 return `[${date}] ${h.notes}`;
             }).filter(n => n).join('\n\n');
 
-            // Combine all objections
-            const allObjections = history.map(h => h.objections).filter(o => o).join('\n');
+            // Get objection notes from leadObjections (the text box) or lead.objections
+            const objectionNotes = state.leadObjections[leadId] || lead.objections || '';
+            // Use objection notes as the primary objection content for syncing
+            const allObjections = objectionNotes;
 
             try {
                 const properties = {
@@ -1604,6 +1626,7 @@
                     else if (componentLower.includes('discovery') || componentLower.includes('question')) sectionKey = 'discoveryQuestions';
                     else if (componentLower.includes('solution')) sectionKey = 'ourSolution';
                     else if (componentLower.includes('value')) sectionKey = 'valueStatement';
+                    else if (componentLower.includes('objection')) sectionKey = 'objectionHandling';
 
                     if (roleKeys.length === 0 || !sectionKey || !content) continue;
 
@@ -1862,6 +1885,33 @@
                     saveState();
                 });
             });
+
+            // Render objection handling cards
+            renderObjectionHandlingCards(roleCategory);
+
+            // Load objection notes for current lead
+            if (lead) {
+                const leadId = generateLeadId(lead);
+                document.getElementById('objectionNotesInput').value = state.leadObjections?.[leadId] || lead.objections || '';
+            }
+        }
+
+        function renderObjectionHandlingCards(roleCategory) {
+            const scripts = state.scripts[roleCategory] || state.scripts['HEAD_OF_SALES'] || {};
+            const objections = scripts.objectionHandling || [];
+            const grid = document.getElementById('scriptObjectionsGrid');
+
+            if (objections.length === 0) {
+                grid.innerHTML = '<p style="color: #718096; font-size: 13px;">No objection handling scripts loaded. Add them to your Scripts database with Component "6. Objection Handling".</p>';
+                return;
+            }
+
+            grid.innerHTML = objections.map((obj, i) => `
+                <div class="objection-card" data-objection-id="${i}">
+                    <div class="objection-title">${obj.name}</div>
+                    <div class="objection-response">${obj.content}</div>
+                </div>
+            `).join('');
         }
 
         function getCurrentScriptSnapshot(roleCategory) {
@@ -1873,6 +1923,26 @@
                 const version = versions[selectedIndex];
                 return { section, versionName: version ? version.name : 'Default', versionIndex: selectedIndex };
             });
+        }
+
+        function skipLead() {
+            if (state.filteredLeads.length === 0) return;
+            moveToNext();
+        }
+
+        function saveObjectionNotes() {
+            if (state.filteredLeads.length === 0) return;
+            const lead = state.filteredLeads[state.currentIndex];
+            const leadId = generateLeadId(lead);
+            const notes = document.getElementById('objectionNotesInput').value;
+            state.leadObjections[leadId] = notes;
+            // Also update the lead object for Notion sync
+            lead.objections = notes;
+            saveState();
+            // Sync to Notion if enabled
+            if (state.notion.autoSync && state.notionPageIds[leadId]) {
+                syncLeadToNotion(lead, leadId);
+            }
         }
 
         // ============================================
@@ -2305,7 +2375,8 @@
                 reps: state.reps,
                 currentRep: state.currentRep,
                 notion: state.notion,
-                notionPageIds: state.notionPageIds
+                notionPageIds: state.notionPageIds,
+                leadObjections: state.leadObjections
             }));
         }
 
@@ -2342,6 +2413,7 @@
                         filterHasPhone: savedNotion.filterHasPhone !== false
                     };
                     state.notionPageIds = data.notionPageIds || {};
+                    state.leadObjections = data.leadObjections || {};
                     state.isFirstLoad = false;
                     // Don't show main content yet - let auto-sync handle it
                 } catch (e) { console.error('Error loading state:', e); }
@@ -2422,6 +2494,8 @@
             document.getElementById('btnAnswered').addEventListener('click', () => recordCall('answered'));
             document.getElementById('btnNoAnswer').addEventListener('click', () => recordCall('no_answer'));
             document.getElementById('btnDidntRing').addEventListener('click', () => recordCall('didnt_ring'));
+            document.getElementById('btnSkip').addEventListener('click', skipLead);
+            document.getElementById('objectionNotesInput').addEventListener('change', saveObjectionNotes);
             document.getElementById('closeNotesModal').addEventListener('click', hideNotesModal);
             document.getElementById('cancelNotes').addEventListener('click', hideNotesModal);
             document.getElementById('saveNotes').addEventListener('click', saveNotesAndContinue);
@@ -2513,6 +2587,7 @@
                     case '1': recordCall('answered'); break;
                     case '2': recordCall('no_answer'); break;
                     case '3': recordCall('didnt_ring'); break;
+                    case '4': skipLead(); break;
                 }
             });
 
