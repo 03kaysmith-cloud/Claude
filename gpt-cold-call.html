@@ -991,10 +991,7 @@
                         </div>
                     </div>
                     <div class="notion-actions">
-                        <button class="btn btn-notion" id="testNotionBtn">Test Connection</button>
-                        <button class="btn btn-primary" id="syncFromNotionBtn">↓ Pull Leads</button>
-                        <button class="btn btn-primary" id="syncScriptsBtn" style="background: #805ad5;">↓ Pull Scripts</button>
-                        <button class="btn btn-success" id="syncToNotionBtn">↑ Push to Notion</button>
+                        <button class="btn btn-primary" id="notionSyncBtn">↻ Sync</button>
                     </div>
                     <small style="display: block; margin-top: 15px; color: #718096;">
                     <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Last Call, Cold Call Notes, Cold Call Status, Objections<br>
@@ -1067,6 +1064,7 @@
                 filterHasPhone: true
             },
             notionPageIds: {}, // Maps leadId to Notion page ID
+            notionScriptPageIds: {}, // Maps script keys to Notion page ID
             leadObjections: {}, // Maps leadId to objection notes text
             leadCallNotes: {} // Maps leadId to call notes text
         };
@@ -1349,18 +1347,50 @@
             }
         }
 
-        async function syncFromNotion() {
+        function getNotionMultiSelectValues(page, propertyName) {
+            const prop = page.properties[propertyName];
+            if (!prop || prop.type !== 'multi_select') return [];
+            return prop.multi_select?.map(s => s.name).filter(Boolean) || [];
+        }
+
+        function getRoleLabelFromKey(roleKey) {
+            const mapping = {
+                CEO_FOUNDER: 'CEO / FOUNDER',
+                CRO: 'CRO',
+                HEAD_OF_SALES: 'HEAD OF SALES',
+                SALES_ENABLEMENT: 'SALES ENABLEMENT'
+            };
+            return mapping[roleKey] || roleKey.replace(/_/g, ' ');
+        }
+
+        function getComponentLabel(sectionKey) {
+            const mapping = {
+                openingLine: '1. Opening Line',
+                painPoint: '2. Pain Point',
+                discoveryQuestions: '3. Discovery Question',
+                ourSolution: '4. Our Solution',
+                valueStatement: '5. Value Statement',
+                objectionHandling: '6. Objection Handling'
+            };
+            return mapping[sectionKey] || sectionKey;
+        }
+
+        function buildScriptKey(roleLabel, componentLabel, scriptName) {
+            return `${roleLabel}||${componentLabel}||${scriptName}`.toUpperCase();
+        }
+
+        async function syncFromNotion(options = {}) {
             if (!state.notion.apiKey || !state.notion.databaseId) {
                 alert('Please enter your Notion API key and Database ID in Settings');
                 return;
             }
             const statusEl = document.getElementById('notionStatus');
             const syncBtn = document.getElementById('notionSyncBtn');
-            if (statusEl) {
+            if (statusEl && !options.suppressStatus) {
                 statusEl.className = 'notion-status syncing';
                 statusEl.textContent = 'Syncing from Notion...';
             }
-            if (syncBtn) syncBtn.textContent = '↻ Syncing...';
+            if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Syncing...';
 
             try {
                 let allPages = [];
@@ -1452,22 +1482,22 @@
                 state.notion.lastSync = new Date().toISOString();
                 state.notion.enabled = true;
 
-                if (statusEl) {
+                if (statusEl && !options.suppressStatus) {
                     statusEl.className = 'notion-status connected';
                     statusEl.textContent = `Synced ${state.leads.length} leads from Notion`;
                 }
-                if (syncBtn) syncBtn.textContent = '↻ Sync Notion';
+                if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Sync';
 
                 showMainContent();
                 applyFilters();
                 saveState();
             } catch (error) {
                 console.error('Notion sync error:', error);
-                if (statusEl) {
+                if (statusEl && !options.suppressStatus) {
                     statusEl.className = 'notion-status disconnected';
                     statusEl.textContent = `Sync failed: ${error.message}`;
                 }
-                if (syncBtn) syncBtn.textContent = '↻ Sync Notion';
+                if (syncBtn && !options.suppressStatus) syncBtn.textContent = '↻ Sync';
                 alert('Failed to sync from Notion: ' + error.message);
             }
         }
@@ -1536,13 +1566,13 @@
             }
         }
 
-        async function syncAllToNotion() {
+        async function syncAllToNotion(options = {}) {
             if (!state.notion.apiKey || !state.notion.databaseId) {
                 alert('Please enter your Notion API key and Database ID in Settings');
                 return;
             }
             const statusEl = document.getElementById('notionStatus');
-            if (statusEl) {
+            if (statusEl && !options.suppressStatus) {
                 statusEl.className = 'notion-status syncing';
                 statusEl.textContent = 'Pushing to Notion...';
             }
@@ -1556,53 +1586,51 @@
                         synced++;
                     }
                 }
-                if (statusEl) {
+                if (statusEl && !options.suppressStatus) {
                     statusEl.className = 'notion-status connected';
                     statusEl.textContent = `Pushed ${synced} leads to Notion`;
                 }
             } catch (error) {
-                if (statusEl) {
+                if (statusEl && !options.suppressStatus) {
                     statusEl.className = 'notion-status disconnected';
                     statusEl.textContent = `Push failed: ${error.message}`;
                 }
             }
         }
 
-        async function syncScriptsFromNotion() {
+        async function syncScriptsFromNotion(options = {}) {
             if (!state.notion.apiKey || !state.notion.scriptsDatabaseId) {
                 alert('Please enter your Notion API key and Scripts Database ID in Settings');
                 return;
             }
             const statusEl = document.getElementById('notionStatus');
-            if (statusEl) {
+            if (statusEl && !options.suppressStatus) {
                 statusEl.className = 'notion-status syncing';
                 statusEl.textContent = 'Pulling scripts from Notion...';
             }
 
             try {
-                const response = await fetch(CORS_PROXY + encodeURIComponent(`https://api.notion.com/v1/databases/${state.notion.scriptsDatabaseId}/query`), {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${state.notion.apiKey}`,
-                        'Content-Type': 'application/json',
-                        'Notion-Version': '2022-06-28'
-                    },
-                    body: JSON.stringify({
-                        page_size: 100
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch scripts: ${response.status}`);
+                let allPages = [];
+                let hasMore = true;
+                let startCursor = undefined;
+                while (hasMore) {
+                    const body = { page_size: 100 };
+                    if (startCursor) body.start_cursor = startCursor;
+                    const result = await notionRequest(`/databases/${state.notion.scriptsDatabaseId}/query`, 'POST', body);
+                    allPages = allPages.concat(result.results);
+                    hasMore = result.has_more;
+                    startCursor = result.next_cursor;
                 }
-
-                const data = await response.json();
                 const newScripts = {};
+                state.notionScriptPageIds = {};
 
                 // Parse scripts from Notion
                 // Expected columns: Component (select), Script (rich_text), Script Name (title), Role of Lead (multi-select)
-                for (const page of data.results) {
-                    const role = getNotionPropertyValue(page, 'Role of Lead') || getNotionPropertyValue(page, 'Role') || '';
+                for (const page of allPages) {
+                    const roleValues = getNotionMultiSelectValues(page, 'Role of Lead').length
+                        ? getNotionMultiSelectValues(page, 'Role of Lead')
+                        : getNotionMultiSelectValues(page, 'Role');
+                    const role = roleValues.join(', ') || getNotionPropertyValue(page, 'Role of Lead') || getNotionPropertyValue(page, 'Role') || '';
                     const component = getNotionPropertyValue(page, 'Component') || getNotionPropertyValue(page, 'Section') || '';
                     const scriptName = getNotionPropertyValue(page, 'Script Name') || getNotionPropertyValue(page, 'Name') || 'Default';
                     const content = getNotionPropertyValue(page, 'Script') || getNotionPropertyValue(page, 'Content') || '';
@@ -1635,6 +1663,11 @@
                     else if (componentLower.includes('objection')) sectionKey = 'objectionHandling';
 
                     if (roleKeys.length === 0 || !sectionKey || !content) continue;
+
+                    const componentLabel = getComponentLabel(sectionKey);
+                    const roleLabelForKey = roleUpper.includes('ALL') ? 'ALL' : (roleValues[0] || role || getRoleLabelFromKey(roleKeys[0]));
+                    const scriptKey = buildScriptKey(roleLabelForKey, componentLabel, scriptName);
+                    state.notionScriptPageIds[scriptKey] = page.id;
 
                     // Add script to all applicable roles
                     for (const roleKey of roleKeys) {
@@ -1670,7 +1703,7 @@
                     state.scripts = newScripts;
                     saveState();
                     renderScript();
-                    if (statusEl) {
+                    if (statusEl && !options.suppressStatus) {
                         statusEl.className = 'notion-status connected';
                         statusEl.textContent = `Pulled scripts for ${Object.keys(newScripts).length} roles`;
                     }
@@ -1679,10 +1712,135 @@
                 }
             } catch (error) {
                 console.error('Script sync error:', error);
-                if (statusEl) {
+                if (statusEl && !options.suppressStatus) {
                     statusEl.className = 'notion-status disconnected';
                     statusEl.textContent = `Script sync failed: ${error.message}`;
                 }
+            }
+        }
+
+        async function fetchNotionScriptPageMap() {
+            let allPages = [];
+            let hasMore = true;
+            let startCursor = undefined;
+            while (hasMore) {
+                const body = { page_size: 100 };
+                if (startCursor) body.start_cursor = startCursor;
+                const result = await notionRequest(`/databases/${state.notion.scriptsDatabaseId}/query`, 'POST', body);
+                allPages = allPages.concat(result.results);
+                hasMore = result.has_more;
+                startCursor = result.next_cursor;
+            }
+            const pageMap = {};
+            for (const page of allPages) {
+                const roleValues = getNotionMultiSelectValues(page, 'Role of Lead').length
+                    ? getNotionMultiSelectValues(page, 'Role of Lead')
+                    : getNotionMultiSelectValues(page, 'Role');
+                const roleLabel = roleValues.includes('ALL') ? 'ALL' : (roleValues[0] || getNotionPropertyValue(page, 'Role of Lead') || getNotionPropertyValue(page, 'Role') || '');
+                const component = getNotionPropertyValue(page, 'Component') || getNotionPropertyValue(page, 'Section') || '';
+                const scriptName = getNotionPropertyValue(page, 'Script Name') || getNotionPropertyValue(page, 'Name') || 'Default';
+                const key = buildScriptKey(roleLabel, component, scriptName);
+                if (roleLabel && component && scriptName) pageMap[key] = page.id;
+            }
+            return pageMap;
+        }
+
+        async function syncScriptsToNotion(options = {}) {
+            if (!state.notion.apiKey || !state.notion.scriptsDatabaseId) {
+                alert('Please enter your Notion API key and Scripts Database ID in Settings');
+                return;
+            }
+            const statusEl = document.getElementById('notionStatus');
+            if (statusEl && !options.suppressStatus) {
+                statusEl.className = 'notion-status syncing';
+                statusEl.textContent = 'Pushing scripts to Notion...';
+            }
+
+            try {
+                const existingPages = await fetchNotionScriptPageMap();
+                let created = 0;
+                let updated = 0;
+
+                for (const [roleKey, sections] of Object.entries(state.scripts)) {
+                    for (const [sectionKey, versions] of Object.entries(sections)) {
+                        if (!Array.isArray(versions)) continue;
+                        const componentLabel = getComponentLabel(sectionKey);
+                        for (const version of versions) {
+                            const scriptName = version.name || 'Default';
+                            const content = version.content || '';
+                            if (!content.trim()) continue;
+                            const roleLabel = sectionKey === 'openingLine' ? 'ALL' : getRoleLabelFromKey(roleKey);
+                            const scriptKey = buildScriptKey(roleLabel, componentLabel, scriptName);
+                            const properties = {
+                                'Component': { select: { name: componentLabel } },
+                                'Script': { rich_text: [{ text: { content: content.substring(0, 2000) } }] },
+                                'Script Name': { title: [{ text: { content: scriptName.substring(0, 200) } }] },
+                                'Role of Lead': { multi_select: [{ name: roleLabel }] }
+                            };
+
+                            if (existingPages[scriptKey]) {
+                                await notionRequest(`/pages/${existingPages[scriptKey]}`, 'PATCH', { properties });
+                                updated++;
+                            } else {
+                                const createdPage = await notionRequest('/pages', 'POST', {
+                                    parent: { database_id: state.notion.scriptsDatabaseId },
+                                    properties
+                                });
+                                existingPages[scriptKey] = createdPage.id;
+                                created++;
+                            }
+                        }
+                    }
+                }
+
+                if (statusEl && !options.suppressStatus) {
+                    statusEl.className = 'notion-status connected';
+                    statusEl.textContent = `Pushed scripts (${updated} updated, ${created} created)`;
+                }
+                state.notionScriptPageIds = existingPages;
+                saveState();
+            } catch (error) {
+                console.error('Failed to sync scripts to Notion:', error);
+                if (statusEl && !options.suppressStatus) {
+                    statusEl.className = 'notion-status disconnected';
+                    statusEl.textContent = `Script push failed: ${error.message}`;
+                }
+            }
+        }
+
+        async function syncNotionData() {
+            if (!state.notion.apiKey || !state.notion.databaseId || !state.notion.scriptsDatabaseId) {
+                alert('Please enter your Notion API key and both Database IDs in Settings');
+                return;
+            }
+            const statusEl = document.getElementById('notionStatus');
+            const syncBtn = document.getElementById('notionSyncBtn');
+            if (statusEl) {
+                statusEl.className = 'notion-status syncing';
+                statusEl.textContent = 'Syncing leads and scripts...';
+            }
+            if (syncBtn) syncBtn.textContent = '↻ Syncing...';
+
+            try {
+                await syncFromNotion({ suppressStatus: true });
+                await syncScriptsFromNotion({ suppressStatus: true });
+                await syncAllToNotion({ suppressStatus: true });
+                await syncScriptsToNotion({ suppressStatus: true });
+                state.notion.lastSync = new Date().toISOString();
+                state.notion.enabled = true;
+                saveState();
+                if (statusEl) {
+                    statusEl.className = 'notion-status connected';
+                    statusEl.textContent = `Synced leads and scripts · ${formatDate(state.notion.lastSync)}`;
+                }
+            } catch (error) {
+                console.error('Full sync failed:', error);
+                if (statusEl) {
+                    statusEl.className = 'notion-status disconnected';
+                    statusEl.textContent = `Sync failed: ${error.message}`;
+                }
+            } finally {
+                if (syncBtn) syncBtn.textContent = '↻ Sync';
             }
         }
 
@@ -1997,6 +2155,9 @@
             // Sync to Notion if enabled
             if (lead && state.notion.enabled && state.notion.autoSync) {
                 syncLeadToNotion(lead, leadId);
+                if (state.notion.scriptsDatabaseId) {
+                    syncScriptsToNotion({ suppressStatus: true });
+                }
             }
         }
 
@@ -2380,6 +2541,7 @@
                 currentRep: state.currentRep,
                 notion: state.notion,
                 notionPageIds: state.notionPageIds,
+                notionScriptPageIds: state.notionScriptPageIds,
                 leadObjections: state.leadObjections,
                 leadCallNotes: state.leadCallNotes
             }));
@@ -2418,6 +2580,7 @@
                         filterHasPhone: savedNotion.filterHasPhone !== false
                     };
                     state.notionPageIds = data.notionPageIds || {};
+                    state.notionScriptPageIds = data.notionScriptPageIds || {};
                     state.leadObjections = data.leadObjections || {};
                     state.leadCallNotes = data.leadCallNotes || {};
                     state.isFirstLoad = false;
@@ -2435,11 +2598,7 @@
             state.notion.scriptsDatabaseId = scriptsDbId;
 
             // Always auto-sync on load
-            syncFromNotion().then(() => {
-                if (scriptsDbId) {
-                    return syncScriptsFromNotion();
-                }
-            }).then(() => {
+            syncNotionData().then(() => {
                 // After sync completes, show main content
                 if (state.leads.length > 0) {
                     showMainContent();
@@ -2540,27 +2699,16 @@
                     document.querySelector('.notion-manager')?.scrollIntoView({ behavior: 'smooth' });
                 }, 100);
             });
-            document.getElementById('testNotionBtn').addEventListener('click', () => {
+            document.getElementById('notionSyncBtn').addEventListener('click', () => {
                 saveNotionSettings();
-                testNotionConnection();
-            });
-            document.getElementById('syncFromNotionBtn').addEventListener('click', () => {
-                saveNotionSettings();
-                syncFromNotion();
-            });
-            document.getElementById('syncToNotionBtn').addEventListener('click', () => {
-                saveNotionSettings();
-                syncAllToNotion();
+                syncNotionData();
             });
             document.getElementById('notionApiKey').addEventListener('change', saveNotionSettings);
             document.getElementById('notionDatabaseId').addEventListener('change', saveNotionSettings);
             document.getElementById('notionScriptsDatabaseId').addEventListener('change', saveNotionSettings);
             document.getElementById('notionAutoSync').addEventListener('change', saveNotionSettings);
             document.getElementById('notionFilterHasPhone').addEventListener('change', saveNotionSettings);
-            document.getElementById('syncScriptsBtn').addEventListener('click', () => {
-                saveNotionSettings();
-                syncScriptsFromNotion();
-            });
+            
 
             document.querySelectorAll('#historyTabs .history-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
