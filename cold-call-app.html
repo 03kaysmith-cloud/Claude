@@ -1034,12 +1034,12 @@
             currentRep: 'Kay',
             historyTab: 'answered',
             isFirstLoad: true,
-            // Notion integration
+            // Notion integration - pre-configured defaults
             notion: {
                 enabled: false,
-                apiKey: '',
-                databaseId: '',
-                scriptsDatabaseId: '',
+                apiKey: 'ntn_o72845711711ULdEW2UsgsYj8DGvEumAimeXyivdNEYe7X',
+                databaseId: '2e01b231bc23801a85a0e3cc297deabd',
+                scriptsDatabaseId: '2f71b231bc2380409c13ca3eed606e58',
                 autoSync: true,
                 lastSync: null,
                 filterHasPhone: true
@@ -2305,6 +2305,13 @@
             }));
         }
 
+        // Default Notion credentials
+        const DEFAULT_NOTION = {
+            apiKey: 'ntn_o72845711711ULdEW2UsgsYj8DGvEumAimeXyivdNEYe7X',
+            databaseId: '2e01b231bc23801a85a0e3cc297deabd',
+            scriptsDatabaseId: '2f71b231bc2380409c13ca3eed606e58'
+        };
+
         function loadState() {
             const saved = localStorage.getItem('coldCallAppState');
             if (saved) {
@@ -2319,12 +2326,41 @@
                     state.pushNotifications = data.pushNotifications !== undefined ? data.pushNotifications : true;
                     state.reps = data.reps || ['Default Rep'];
                     state.currentRep = data.currentRep || state.reps[0];
-                    state.notion = data.notion || state.notion;
+                    // Merge Notion settings, using defaults for empty values
+                    const savedNotion = data.notion || {};
+                    state.notion = {
+                        enabled: savedNotion.enabled || false,
+                        apiKey: savedNotion.apiKey || DEFAULT_NOTION.apiKey,
+                        databaseId: savedNotion.databaseId || DEFAULT_NOTION.databaseId,
+                        scriptsDatabaseId: savedNotion.scriptsDatabaseId || DEFAULT_NOTION.scriptsDatabaseId,
+                        autoSync: savedNotion.autoSync !== false,
+                        lastSync: savedNotion.lastSync || null,
+                        filterHasPhone: savedNotion.filterHasPhone !== false
+                    };
                     state.notionPageIds = data.notionPageIds || {};
                     state.isFirstLoad = false;
                     if (state.leads.length > 0) { showMainContent(); applyFilters(); }
                 } catch (e) { console.error('Error loading state:', e); }
             }
+            // Auto-sync from Notion on load (always sync with defaults)
+            setTimeout(() => {
+                const apiKey = state.notion.apiKey || DEFAULT_NOTION.apiKey;
+                const dbId = state.notion.databaseId || DEFAULT_NOTION.databaseId;
+                const scriptsDbId = state.notion.scriptsDatabaseId || DEFAULT_NOTION.scriptsDatabaseId;
+
+                // Ensure defaults are set
+                state.notion.apiKey = apiKey;
+                state.notion.databaseId = dbId;
+                state.notion.scriptsDatabaseId = scriptsDbId;
+
+                if (apiKey && dbId) {
+                    syncFromNotion().then(() => {
+                        if (scriptsDbId) {
+                            syncScriptsFromNotion();
+                        }
+                    });
+                }
+            }, 500);
         }
 
         // ============================================
