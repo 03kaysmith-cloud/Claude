@@ -894,10 +894,10 @@
                     <div class="objections-grid" id="scriptObjectionsGrid"></div>
                 </div>
 
-                <!-- Objection Notes -->
-                <div class="script-section" id="objectionNotesSection">
-                    <h4>Call Objection Notes</h4>
-                    <textarea id="objectionNotesInput" placeholder="Note any objections raised during the call..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                <!-- Call Notes -->
+                <div class="script-section" id="callNotesSection">
+                    <h4>Call Notes</h4>
+                    <textarea id="callNotesInput" placeholder="Add notes during the call..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
                 </div>
             </div>
         </main>
@@ -911,6 +911,14 @@
                 <button class="modal-close" id="closeNotesModal">&times;</button>
             </div>
             <div class="modal-body">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">Call Notes</label>
+                    <textarea id="modalCallNotes" placeholder="Add notes from the call..." style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                </div>
+                <div id="objectionNotesSection" style="display: none; margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 5px;">Objection Notes</label>
+                    <textarea id="modalObjectionNotes" placeholder="Note any objections raised..." style="width: 100%; min-height: 60px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                </div>
                 <div id="objectionsCardsSection" style="display: none;">
                     <div class="objections-section-title">Select Any Objections Raised</div>
                     <div class="objections-grid" id="objectionsGrid"></div>
@@ -1065,7 +1073,8 @@
                 filterHasPhone: true
             },
             notionPageIds: {}, // Maps leadId to Notion page ID
-            leadObjections: {} // Maps leadId to objection notes text
+            leadObjections: {}, // Maps leadId to objection notes text
+            leadCallNotes: {} // Maps leadId to call notes text
         };
 
         const CORS_PROXY = 'https://corsproxy.io/?';
@@ -1413,6 +1422,7 @@
                         qualifyingSignals: getNotionPropertyValue(page, 'Qualifying Signals'),
                         linkedInUrl: getNotionPropertyValue(page, 'LinkedIn URL'),
                         objections: objections,
+                        callNotes: coldCallNotes || '',
                         notionPageId: page.id
                     };
                     // Store page ID mapping
@@ -1421,6 +1431,11 @@
                     // Store objection notes
                     if (objections) {
                         state.leadObjections[leadId] = objections;
+                    }
+                    // Store call notes
+                    if (coldCallNotes) {
+                        state.leadCallNotes = state.leadCallNotes || {};
+                        state.leadCallNotes[leadId] = coldCallNotes;
                     }
 
                     // If there's call history in Notion, populate local state
@@ -1499,15 +1514,18 @@
                 followUp = lastCall.dontFollowUp ? "Don't follow up" : 'Follow up';
             }
 
-            // Combine all notes with timestamps
-            const allNotes = history.map(h => {
+            // Get call notes from leadCallNotes state (the text box in script panel)
+            const callNotes = state.leadCallNotes?.[leadId] || lead.callNotes || '';
+            // Combine with history notes if any
+            const historyNotes = history.map(h => {
                 if (!h.notes) return null;
                 const date = new Date(h.date).toLocaleDateString('en-GB');
                 return `[${date}] ${h.notes}`;
             }).filter(n => n).join('\n\n');
+            const allNotes = callNotes ? (historyNotes ? `${callNotes}\n\n${historyNotes}` : callNotes) : historyNotes;
 
             // Get objection notes from leadObjections (the text box) or lead.objections
-            const objectionNotes = state.leadObjections[leadId] || lead.objections || '';
+            const objectionNotes = state.leadObjections?.[leadId] || lead.objections || '';
             // Use objection notes as the primary objection content for syncing
             const allObjections = objectionNotes;
 
@@ -1889,10 +1907,10 @@
             // Render objection handling cards
             renderObjectionHandlingCards(roleCategory);
 
-            // Load objection notes for current lead
+            // Load call notes for current lead
             if (lead) {
                 const leadId = generateLeadId(lead);
-                document.getElementById('objectionNotesInput').value = state.leadObjections?.[leadId] || lead.objections || '';
+                document.getElementById('callNotesInput').value = state.leadCallNotes?.[leadId] || lead.callNotes || '';
             }
         }
 
@@ -1930,14 +1948,14 @@
             moveToNext();
         }
 
-        function saveObjectionNotes() {
+        function saveCallNotes() {
             if (state.filteredLeads.length === 0) return;
             const lead = state.filteredLeads[state.currentIndex];
             const leadId = generateLeadId(lead);
-            const notes = document.getElementById('objectionNotesInput').value;
-            state.leadObjections[leadId] = notes;
+            const notes = document.getElementById('callNotesInput').value;
+            state.leadCallNotes[leadId] = notes;
             // Also update the lead object for Notion sync
-            lead.objections = notes;
+            lead.callNotes = notes;
             saveState();
             // Sync to Notion if enabled
             if (state.notion.autoSync && state.notionPageIds[leadId]) {
@@ -1954,14 +1972,7 @@
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
 
-            // Skip modal for "Didn't Ring" and "No Answer" - just record and move on
-            if (status === 'didnt_ring' || status === 'no_answer') {
-                addCallRecord(leadId, status, '', roleCategory, false);
-                moveToNext();
-                return;
-            }
-
-            // Show modal only for answered calls (to track objections)
+            // Show modal for all call types to capture notes
             showNotesModal(leadId, roleCategory, status);
         }
 
@@ -2026,20 +2037,29 @@
         function showNotesModal(leadId, roleCategory, status) {
             const modal = document.getElementById('notesModal');
             const objectionsCardsSection = document.getElementById('objectionsCardsSection');
+            const objectionNotesSection = document.getElementById('objectionNotesSection');
             const snapshotContainer = document.getElementById('scriptSnapshotContent');
             const snapshotSection = document.getElementById('scriptSnapshotSection');
             const dontFollowUpSection = document.getElementById('dontFollowUpSection');
             const dontFollowUpCheckbox = document.getElementById('dontFollowUpCheckbox');
+            const modalCallNotes = document.getElementById('modalCallNotes');
+            const modalObjectionNotes = document.getElementById('modalObjectionNotes');
 
             const titleMap = { 'answered': 'Call Outcome - Answered', 'no_answer': 'Call Outcome - No Answer', 'didnt_ring': 'Call Outcome - Didn\'t Ring' };
             document.getElementById('notesModalTitle').textContent = titleMap[status] || 'Call Outcome';
             dontFollowUpCheckbox.checked = false;
             selectedObjections = [];
 
+            // Pre-populate call notes from the script panel
+            modalCallNotes.value = document.getElementById('callNotesInput').value || '';
+            // Pre-populate objection notes
+            modalObjectionNotes.value = state.leadObjections[leadId] || '';
+
             if (status === 'answered') {
                 snapshotSection.style.display = 'block';
                 dontFollowUpSection.style.display = 'flex';
                 objectionsCardsSection.style.display = 'block';
+                objectionNotesSection.style.display = 'block';
                 renderObjectionsCards();
                 const snapshot = getCurrentScriptSnapshot(roleCategory);
                 const sectionLabels = { openingLine: 'Opening Line', painPoint: 'Pain Point', discoveryQuestions: 'Discovery Questions', ourSolution: 'Our Solution', valueStatement: 'Value Statement' };
@@ -2050,9 +2070,11 @@
                     </div>
                 `).join('');
             } else {
+                // For No Answer / Didn't Ring - just show call notes
                 snapshotSection.style.display = 'none';
                 dontFollowUpSection.style.display = 'none';
                 objectionsCardsSection.style.display = 'none';
+                objectionNotesSection.style.display = 'none';
             }
 
             modal.dataset.leadId = leadId;
@@ -2070,14 +2092,39 @@
             const roleCategory = modal.dataset.roleCategory;
             const status = modal.dataset.status;
 
-            // Convert selected objection IDs to readable text
+            // Get call notes from modal
+            const callNotes = document.getElementById('modalCallNotes').value.trim();
+            // Get objection notes from modal (only for answered calls)
+            const objectionNotes = document.getElementById('modalObjectionNotes').value.trim();
+
+            // Save objection notes to state
+            if (objectionNotes) {
+                state.leadObjections[leadId] = objectionNotes;
+                // Also update the lead object
+                const lead = state.filteredLeads.find(l => generateLeadId(l) === leadId);
+                if (lead) lead.objections = objectionNotes;
+            }
+
+            // Save call notes to lead
+            const lead = state.filteredLeads.find(l => generateLeadId(l) === leadId);
+            if (lead) {
+                lead.callNotes = callNotes;
+                state.leadCallNotes = state.leadCallNotes || {};
+                state.leadCallNotes[leadId] = callNotes;
+            }
+
+            // Convert selected objection card IDs to readable text
             const objectionTexts = selectedObjections.map(id => {
                 const obj = OBJECTIONS.find(o => o.id === id);
                 return obj ? obj.title : id;
             });
-            const objections = objectionTexts.join(', ');
+            const selectedObjText = objectionTexts.join(', ');
 
-            addCallRecord(leadId, status, '', roleCategory, dontFollowUp, objections);
+            addCallRecord(leadId, status, callNotes, roleCategory, dontFollowUp, selectedObjText);
+
+            // Clear the script panel notes for next lead
+            document.getElementById('callNotesInput').value = '';
+
             hideNotesModal();
             moveToNext();
         }
@@ -2376,7 +2423,8 @@
                 currentRep: state.currentRep,
                 notion: state.notion,
                 notionPageIds: state.notionPageIds,
-                leadObjections: state.leadObjections
+                leadObjections: state.leadObjections,
+                leadCallNotes: state.leadCallNotes
             }));
         }
 
@@ -2414,6 +2462,7 @@
                     };
                     state.notionPageIds = data.notionPageIds || {};
                     state.leadObjections = data.leadObjections || {};
+                    state.leadCallNotes = data.leadCallNotes || {};
                     state.isFirstLoad = false;
                     // Don't show main content yet - let auto-sync handle it
                 } catch (e) { console.error('Error loading state:', e); }
@@ -2495,7 +2544,7 @@
             document.getElementById('btnNoAnswer').addEventListener('click', () => recordCall('no_answer'));
             document.getElementById('btnDidntRing').addEventListener('click', () => recordCall('didnt_ring'));
             document.getElementById('btnSkip').addEventListener('click', skipLead);
-            document.getElementById('objectionNotesInput').addEventListener('change', saveObjectionNotes);
+            document.getElementById('callNotesInput').addEventListener('change', saveCallNotes);
             document.getElementById('closeNotesModal').addEventListener('click', hideNotesModal);
             document.getElementById('cancelNotes').addEventListener('click', hideNotesModal);
             document.getElementById('saveNotes').addEventListener('click', saveNotesAndContinue);
