@@ -1770,12 +1770,23 @@
         function applyFilters() {
             state.filteredLeads = state.leads.filter(lead => {
                 const leadId = generateLeadId(lead);
-                const status = getLeadStatus(leadId);
+                const history = state.callHistory[leadId] || [];
+                const hasAnswered = history.some(h => h.status === 'answered');
+                const hasNoAnswer = history.some(h => h.status === 'no_answer');
+                const isNotCalled = history.length === 0;
                 const roleCategory = categorizeRole(lead.role);
                 const region = detectRegionFromPhone(lead.phone);
-                if (status === 'answered' && !state.filters.answered) return false;
-                if (status === 'no_answer' && !state.filters.noAnswer) return false;
-                if (status === 'not_called' && !state.filters.notCalled) return false;
+                if (isOnDoNotCallList(leadId)) return false;
+                const hasStatusFilters = state.filters.answered || state.filters.noAnswer || state.filters.notCalled;
+                if (hasStatusFilters) {
+                    if (!(state.filters.noAnswer && state.filters.notCalled)) {
+                        let statusMatch = false;
+                        if (state.filters.answered && hasAnswered) statusMatch = true;
+                        if (state.filters.noAnswer && hasNoAnswer) statusMatch = true;
+                        if (state.filters.notCalled && isNotCalled) statusMatch = true;
+                        if (!statusMatch) return false;
+                    }
+                }
                 if (state.filters.role !== 'all' && roleCategory !== state.filters.role) return false;
                 if (state.filters.region !== 'all' && region !== state.filters.region) return false;
                 return true;
@@ -2560,24 +2571,8 @@
             });
 
             document.getElementById('filterAnswered').addEventListener('change', (e) => { state.filters.answered = e.target.checked; applyFilters(); saveState(); });
-            document.getElementById('filterNoAnswer').addEventListener('change', (e) => {
-                state.filters.noAnswer = e.target.checked;
-                if (state.filters.noAnswer) {
-                    state.filters.notCalled = false;
-                    document.getElementById('filterNotCalled').checked = false;
-                }
-                applyFilters();
-                saveState();
-            });
-            document.getElementById('filterNotCalled').addEventListener('change', (e) => {
-                state.filters.notCalled = e.target.checked;
-                if (state.filters.notCalled) {
-                    state.filters.noAnswer = false;
-                    document.getElementById('filterNoAnswer').checked = false;
-                }
-                applyFilters();
-                saveState();
-            });
+            document.getElementById('filterNoAnswer').addEventListener('change', (e) => { state.filters.noAnswer = e.target.checked; applyFilters(); saveState(); });
+            document.getElementById('filterNotCalled').addEventListener('change', (e) => { state.filters.notCalled = e.target.checked; applyFilters(); saveState(); });
             document.getElementById('filterRole').addEventListener('change', (e) => { state.filters.role = e.target.value; applyFilters(); saveState(); });
             document.getElementById('filterRegion').addEventListener('change', (e) => { state.filters.region = e.target.value; applyFilters(); saveState(); });
 
