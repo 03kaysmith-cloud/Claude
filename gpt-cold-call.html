@@ -850,7 +850,7 @@
                 </div>
 
                 <div class="previous-notes" id="previousNotesSection" style="display: none;">
-                    <h4>Previous Call Notes</h4>
+                    <h4>Latest Call Notes</h4>
                     <p id="previousNotesContent"></p>
                     <div class="note-date" id="previousNotesDate"></div>
                 </div>
@@ -1818,7 +1818,7 @@
             document.getElementById('totalLeads').textContent = state.filteredLeads.length;
             document.getElementById('prevBtn').disabled = state.currentIndex === 0;
 
-            renderPreviousNotes(leadId);
+            renderPreviousNotes(leadId, lead);
             renderScripts(roleCategory, lead);
             document.getElementById('scriptRoleTitle').textContent = getRoleCategoryLabel(roleCategory);
             sendPhoneNotification(lead);
@@ -1840,14 +1840,24 @@
             document.getElementById('previousNotesSection').style.display = 'none';
         }
 
-        function renderPreviousNotes(leadId) {
+        function renderPreviousNotes(leadId, lead) {
             const history = state.callHistory[leadId] || [];
             const section = document.getElementById('previousNotesSection');
             const notesWithContent = history.filter(h => h.notes && h.notes.trim());
-            if (notesWithContent.length === 0) { section.style.display = 'none'; return; }
-            const lastNote = notesWithContent[notesWithContent.length - 1];
-            document.getElementById('previousNotesContent').textContent = lastNote.notes;
-            document.getElementById('previousNotesDate').textContent = formatDate(lastNote.date) + ' - ' + (lastNote.status === 'answered' ? 'Answered' : 'No Answer');
+            const fallbackNotes = state.leadCallNotes?.[leadId] || lead?.callNotes || '';
+            const fallbackDate = lead?.lastCall;
+            if (notesWithContent.length === 0 && !fallbackNotes) {
+                section.style.display = 'none';
+                return;
+            }
+            if (notesWithContent.length > 0) {
+                const lastNote = notesWithContent[notesWithContent.length - 1];
+                document.getElementById('previousNotesContent').textContent = lastNote.notes;
+                document.getElementById('previousNotesDate').textContent = formatDate(lastNote.date) + ' - ' + (lastNote.status === 'answered' ? 'Answered' : 'No Answer');
+            } else {
+                document.getElementById('previousNotesContent').textContent = fallbackNotes;
+                document.getElementById('previousNotesDate').textContent = fallbackDate ? formatDate(fallbackDate) : '';
+            }
             section.style.display = 'block';
         }
 
