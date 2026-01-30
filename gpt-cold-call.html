@@ -921,7 +921,7 @@
             leads: [],
             filteredLeads: [],
             currentIndex: 0,
-            scripts: getDefaultScripts(),
+            scripts: {},
             callHistory: {},
             selectedVersions: {},
             filters: {
@@ -957,99 +957,6 @@
 
         const NTFY_TOPIC = 'cold-calling-hiveperform';
         const NTFY_URL = `https://ntfy.sh/${NTFY_TOPIC}`;
-
-        function getDefaultScripts() {
-            return {
-                CEO_FOUNDER: {
-                    openingLine: [
-                        { name: 'Direct', content: 'Hi [Name], this is [Your Name] from Hive Perform. I know this is a cold call - do you have 30 seconds for me to explain why I\'m calling, and then you can decide if it\'s worth continuing?' },
-                        { name: 'Referral', content: 'Hi [Name], I was speaking with a few other founders in the [Vertical] space and your name came up. Quick question - are you still focused on scaling the sales team this year?' }
-                    ],
-                    painPoint: [
-                        { name: 'Revenue Scale', content: 'Revenue unpredictability; can\'t scale sales without adding headcount; no visibility into why deals are won/lost' },
-                        { name: 'Strategy Gap', content: 'Strategy disconnected from execution - what leadership wants vs. what actually happens on calls' }
-                    ],
-                    discoveryQuestions: [
-                        { name: 'Cost Focus', content: '"What\'s the cost to you of not knowing what\'s actually happening in your sales conversations?" "How do you currently validate that your GTM strategy is being executed?"' },
-                        { name: 'Scale Focus', content: '"When you think about doubling the team, what keeps you up at night?" "How do you ensure new reps sell the way your best reps do?"' }
-                    ],
-                    ourSolution: [
-                        { name: 'Intelligence', content: 'Intelligence that connects strategy to execution; feedback loop from customer voice back to product marketing; data-driven insights for board/investor conversations' },
-                        { name: 'Playbook', content: 'A living playbook that evolves with your actual execution - surfaces what\'s working from your top performers and scales it across the team' }
-                    ],
-                    valueStatement: [
-                        { name: 'Alignment', content: '"Align your entire go-to-market team - connect the dots between product, marketing, and sales. See what your buyers are actually saying vs. what your team is saying back."' },
-                        { name: 'Growth', content: '"Growth without process drift - keep your sales methodology sharp even as headcount doubles."' }
-                    ]
-                },
-                CRO: {
-                    openingLine: [
-                        { name: 'Direct', content: 'Hi [Name], this is [Your Name] from Hive Perform. I work with CROs who are frustrated with forecast accuracy - is that something you\'re dealing with right now?' },
-                        { name: 'Challenger', content: 'Hi [Name], quick question - when your team says they\'re following MEDDIC, how confident are you that they actually are?' }
-                    ],
-                    painPoint: [
-                        { name: 'Forecast', content: 'Forecast accuracy is poor (calling deals at 1st vs end of month is "grossly off"); methodology (MEDDIC/SPICED) exists but execution is patchy; fragmented data across Salesforce, Gong, Clari with no unified view' },
-                        { name: 'Visibility', content: 'No way to see real deal health - relying on rep optimism vs. actual buyer signals' }
-                    ],
-                    discoveryQuestions: [
-                        { name: 'Confidence', content: '"How confident are you in your forecast right now?" "90% of companies we speak to are methodology-poor - they say MEDDIC but don\'t know what good execution looks like at each stage. Does that resonate?"' },
-                        { name: 'Process', content: '"Where do deals typically fall apart in your process?" "How do you currently identify at-risk deals before it\'s too late?"' }
-                    ],
-                    ourSolution: [
-                        { name: 'Visibility', content: 'Real-time playbook execution visibility; unified view across all your tools; deal-level insights that show exactly where methodology is breaking down' },
-                        { name: 'Action', content: 'Not just visibility - prescribed next steps for every deal. Guidance shows up where reps work, not buried in reports.' }
-                    ],
-                    valueStatement: [
-                        { name: 'Scale', content: '"What if your team could handle 40% more deals without burning out? Better forecast accuracy by seeing real deal health, not just what reps tell you."' },
-                        { name: 'Trust', content: '"Trust but verify - know your playbook is working without having to shadow every call."' }
-                    ]
-                },
-                HEAD_OF_SALES: {
-                    openingLine: [
-                        { name: 'Direct', content: 'Hi [Name], this is [Your Name] from Hive Perform. I work with sales leaders who spend too much time on manual coaching. Is that a challenge you\'re facing?' },
-                        { name: 'Problem', content: 'Hi [Name], quick question - do you have reps at 120% quota while others are struggling at 15%? I might be able to help with that gap.' }
-                    ],
-                    painPoint: [
-                        { name: 'Coaching', content: 'Manual coaching takes too long ("I can\'t supervise 8 people on sales calls all day"); rep performance disparities (one rep at 120% quota, three at 15%); no way to identify what good looks like at each stage' },
-                        { name: 'Time', content: 'Spending all day in 1:1s and deal reviews instead of strategic work' }
-                    ],
-                    discoveryQuestions: [
-                        { name: 'Time', content: '"How much of your time is spent on manual coaching vs. strategic work?" "What happens when a rep is losing deals at a specific stage - can you currently diagnose why?"' },
-                        { name: 'Performance', content: '"What separates your top performers from the rest?" "How do you scale what\'s working with your best reps?"' }
-                    ],
-                    ourSolution: [
-                        { name: 'Automation', content: 'Automated coaching at scale; surfaces insights so you don\'t have to review every call; identifies performance patterns and coaching opportunities per rep' },
-                        { name: 'Insights', content: 'Auto-flagged coachable moments delivered to you - know exactly where each rep needs help without listening to hours of calls' }
-                    ],
-                    valueStatement: [
-                        { name: 'Scale', content: '"Move from superstar sales culture to systematic sales - scale coaching without adding managers and uplift performance across your entire team."' },
-                        { name: 'Time', content: '"Get 5 hours back per week while actually improving coaching quality. 1:1s run off real data, not guesswork."' }
-                    ]
-                },
-                SALES_ENABLEMENT: {
-                    openingLine: [
-                        { name: 'Direct', content: 'Hi [Name], this is [Your Name] from Hive Perform. I work with enablement leaders who struggle to prove training ROI. Is that something you deal with?' },
-                        { name: 'Value', content: 'Hi [Name], quick question - after you run a training program, how do you know if reps are actually using what they learned on calls?' }
-                    ],
-                    painPoint: [
-                        { name: 'ROI', content: 'Hard to prove training program impact; content adoption is unclear; can\'t track if messaging lands with buyers' },
-                        { name: 'Adoption', content: 'Reps attend training but don\'t change behavior - no visibility into actual execution' }
-                    ],
-                    discoveryQuestions: [
-                        { name: 'Measurement', content: '"How do you currently measure if your training programs are working?" "Can you see if reps are using the messaging you\'ve rolled out?"' },
-                        { name: 'Impact', content: '"When leadership asks about enablement ROI, what data do you show them?" "How do you know which content is actually resonating with buyers?"' }
-                    ],
-                    ourSolution: [
-                        { name: 'Validation', content: 'Messaging validation - see if value props land with buyers; surface exact language from winning calls; align Product/Marketing/Sales on what works' },
-                        { name: 'Tracking', content: 'Track methodology adherence and content adoption across every rep and every deal - prove exactly what\'s working' }
-                    ],
-                    valueStatement: [
-                        { name: 'Proof', content: '"Finally prove enablement ROI with hard data. See which messaging lands with buyers and which training programs actually change behavior."' },
-                        { name: 'Alignment', content: '"Become the strategic partner to revenue leadership - bring insights that shape GTM strategy, not just training decks."' }
-                    ]
-                }
-            };
-        }
 
         // ============================================
         // UTILITIES
@@ -1543,19 +1450,6 @@
 
                 // Only update if we got valid scripts
                 if (Object.keys(newScripts).length > 0) {
-                    // Merge with defaults for any missing roles/sections
-                    const defaults = getDefaultScripts();
-                    for (const role of Object.keys(defaults)) {
-                        if (!newScripts[role]) {
-                            newScripts[role] = defaults[role];
-                        } else {
-                            for (const section of Object.keys(defaults[role])) {
-                                if (!newScripts[role][section] || newScripts[role][section].length === 0) {
-                                    newScripts[role][section] = defaults[role][section];
-                                }
-                            }
-                        }
-                    }
                     state.scripts = newScripts;
                     saveState();
                     const lead = state.filteredLeads[state.currentIndex];
@@ -1799,7 +1693,7 @@
         }
 
         function renderScripts(roleCategory, lead) {
-            const scripts = state.scripts[roleCategory] || state.scripts['HEAD_OF_SALES'];
+            const scripts = state.scripts[roleCategory] || {};
             const selectedVersions = state.selectedVersions[roleCategory] || {};
             const painVersions = scripts.painPoint || [];
             const painIndex = selectedVersions.painPoint || 0;
@@ -1816,7 +1710,7 @@
             container.innerHTML = sections.map(section => {
                 const versions = scripts[section.key] || [];
                 const selectedIndex = selectedVersions[section.key] || 0;
-                const currentVersion = versions[selectedIndex] || { name: 'Default', content: 'No content available' };
+                const currentVersion = versions[selectedIndex] || { name: 'Not synced', content: 'Sync scripts from Notion to view content.' };
                 let content = currentVersion.content;
                 if (lead) {
                     const firstName = lead.contactName ? lead.contactName.split(' ')[0] : '[Name]';
@@ -1831,7 +1725,9 @@
                         <div class="script-section-header">
                             <span class="script-section-title">${section.title}</span>
                             <select class="script-version-select" data-section="${section.key}" data-role="${roleCategory}">
-                                ${versions.map((v, i) => `<option value="${i}" ${i === selectedIndex ? 'selected' : ''}>${v.name}</option>`).join('')}
+                                ${versions.length
+                                    ? versions.map((v, i) => `<option value="${i}" ${i === selectedIndex ? 'selected' : ''}>${v.name}</option>`).join('')
+                                    : '<option value="0" selected>No scripts</option>'}
                             </select>
                         </div>
                         <div class="script-content">${content}</div>
@@ -1855,7 +1751,7 @@
         }
 
         function renderObjectionHandlingCards(roleCategory) {
-            const scripts = state.scripts[roleCategory] || state.scripts['HEAD_OF_SALES'] || {};
+            const scripts = state.scripts[roleCategory] || {};
             const objections = scripts.objectionHandling || [];
             const grid = document.getElementById('scriptObjectionsGrid');
 
@@ -1873,13 +1769,13 @@
         }
 
         function getCurrentScriptSnapshot(roleCategory) {
-            const scripts = state.scripts[roleCategory] || state.scripts['HEAD_OF_SALES'];
+            const scripts = state.scripts[roleCategory] || {};
             const selectedVersions = state.selectedVersions[roleCategory] || {};
             return ['openingLine', 'painPoint', 'discoveryQuestions', 'ourSolution', 'valueStatement'].map(section => {
                 const versions = scripts[section] || [];
                 const selectedIndex = selectedVersions[section] || 0;
                 const version = versions[selectedIndex];
-                return { section, versionName: version ? version.name : 'Default', versionIndex: selectedIndex };
+                return { section, versionName: version ? version.name : 'Not synced', versionIndex: selectedIndex };
             });
         }
 
@@ -2177,8 +2073,6 @@
             localStorage.setItem('coldCallAppState', JSON.stringify({
                 leads: state.leads,
                 callHistory: state.callHistory,
-                scripts: state.scripts,
-                selectedVersions: state.selectedVersions,
                 currentIndex: state.currentIndex,
                 filters: state.filters,
                 pushNotifications: state.pushNotifications,
@@ -2206,8 +2100,8 @@
                     const data = JSON.parse(saved);
                     state.leads = data.leads || [];
                     state.callHistory = data.callHistory || {};
-                    state.scripts = data.scripts || getDefaultScripts();
-                    state.selectedVersions = data.selectedVersions || {};
+                    state.scripts = {};
+                    state.selectedVersions = {};
                     state.currentIndex = data.currentIndex || 0;
                     state.filters = data.filters || state.filters;
                     state.pushNotifications = data.pushNotifications !== undefined ? data.pushNotifications : true;
