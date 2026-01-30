@@ -2560,8 +2560,24 @@
             });
 
             document.getElementById('filterAnswered').addEventListener('change', (e) => { state.filters.answered = e.target.checked; applyFilters(); saveState(); });
-            document.getElementById('filterNoAnswer').addEventListener('change', (e) => { state.filters.noAnswer = e.target.checked; applyFilters(); saveState(); });
-            document.getElementById('filterNotCalled').addEventListener('change', (e) => { state.filters.notCalled = e.target.checked; applyFilters(); saveState(); });
+            document.getElementById('filterNoAnswer').addEventListener('change', (e) => {
+                state.filters.noAnswer = e.target.checked;
+                if (state.filters.noAnswer) {
+                    state.filters.notCalled = false;
+                    document.getElementById('filterNotCalled').checked = false;
+                }
+                applyFilters();
+                saveState();
+            });
+            document.getElementById('filterNotCalled').addEventListener('change', (e) => {
+                state.filters.notCalled = e.target.checked;
+                if (state.filters.notCalled) {
+                    state.filters.noAnswer = false;
+                    document.getElementById('filterNoAnswer').checked = false;
+                }
+                applyFilters();
+                saveState();
+            });
             document.getElementById('filterRole').addEventListener('change', (e) => { state.filters.role = e.target.value; applyFilters(); saveState(); });
             document.getElementById('filterRegion').addEventListener('change', (e) => { state.filters.region = e.target.value; applyFilters(); saveState(); });
 
