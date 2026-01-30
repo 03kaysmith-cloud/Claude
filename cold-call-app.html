@@ -976,7 +976,7 @@
                     </div>
                     <small style="display: block; margin-top: 15px; color: #718096;">
                         <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Cold Call Notes, Cold Call Status, Objections<br>
-                        <strong>Scripts DB columns:</strong> Role (select), Section (select), Version Name (title), Content (rich_text)
+                        <strong>Scripts DB columns:</strong> Component (select), Script (rich_text), Script Name (title), Role of Lead (multi-select)
                     </small>
                 </div>
             </div>
@@ -1566,41 +1566,55 @@
                 const newScripts = {};
 
                 // Parse scripts from Notion
-                // Expected columns: Role (select), Section (select), Version Name (title), Content (rich_text)
+                // Expected columns: Component (select), Script (rich_text), Script Name (title), Role of Lead (multi-select)
                 for (const page of data.results) {
-                    const role = getNotionPropertyValue(page, 'Role') || '';
-                    const section = getNotionPropertyValue(page, 'Section') || '';
-                    const versionName = getNotionPropertyValue(page, 'Version Name') || getNotionPropertyValue(page, 'Name') || 'Default';
-                    const content = getNotionPropertyValue(page, 'Content') || getNotionPropertyValue(page, 'Script') || '';
+                    const role = getNotionPropertyValue(page, 'Role of Lead') || getNotionPropertyValue(page, 'Role') || '';
+                    const component = getNotionPropertyValue(page, 'Component') || getNotionPropertyValue(page, 'Section') || '';
+                    const scriptName = getNotionPropertyValue(page, 'Script Name') || getNotionPropertyValue(page, 'Name') || 'Default';
+                    const content = getNotionPropertyValue(page, 'Script') || getNotionPropertyValue(page, 'Content') || '';
 
-                    // Map role names to role keys
-                    let roleKey = role.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/__+/g, '_');
-                    if (role.toLowerCase().includes('ceo') || role.toLowerCase().includes('founder')) roleKey = 'CEO_FOUNDER';
-                    else if (role.toLowerCase().includes('cro')) roleKey = 'CRO';
-                    else if (role.toLowerCase().includes('head') && role.toLowerCase().includes('sales')) roleKey = 'HEAD_OF_SALES';
-                    else if (role.toLowerCase().includes('enablement')) roleKey = 'SALES_ENABLEMENT';
-
-                    // Map section names to section keys
-                    let sectionKey = section.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (section.toLowerCase().includes('opening')) sectionKey = 'openingLine';
-                    else if (section.toLowerCase().includes('pain')) sectionKey = 'painPoint';
-                    else if (section.toLowerCase().includes('discovery') || section.toLowerCase().includes('question')) sectionKey = 'discoveryQuestions';
-                    else if (section.toLowerCase().includes('solution')) sectionKey = 'ourSolution';
-                    else if (section.toLowerCase().includes('value')) sectionKey = 'valueStatement';
-
-                    if (!roleKey || !sectionKey || !content) continue;
-
-                    if (!newScripts[roleKey]) {
-                        newScripts[roleKey] = {};
-                    }
-                    if (!newScripts[roleKey][sectionKey]) {
-                        newScripts[roleKey][sectionKey] = [];
+                    // Handle "ALL" role - applies to all roles
+                    const roleUpper = role.toUpperCase();
+                    let roleKeys = [];
+                    if (roleUpper.includes('ALL')) {
+                        roleKeys = ['CEO_FOUNDER', 'CRO', 'HEAD_OF_SALES', 'SALES_ENABLEMENT'];
+                    } else if (roleUpper.includes('CEO') || roleUpper.includes('FOUNDER')) {
+                        roleKeys = ['CEO_FOUNDER'];
+                    } else if (roleUpper.includes('CRO')) {
+                        roleKeys = ['CRO'];
+                    } else if (roleUpper.includes('HEAD') && roleUpper.includes('SALES')) {
+                        roleKeys = ['HEAD_OF_SALES'];
+                    } else if (roleUpper.includes('ENABLEMENT')) {
+                        roleKeys = ['SALES_ENABLEMENT'];
+                    } else {
+                        roleKeys = [roleUpper.replace(/[^A-Z0-9]/g, '_').replace(/__+/g, '_')];
                     }
 
-                    newScripts[roleKey][sectionKey].push({
-                        name: versionName,
-                        content: content
-                    });
+                    // Map component names to section keys (handles "1. Opening Line", "2. Pain Point", etc.)
+                    let sectionKey = '';
+                    const componentLower = component.toLowerCase();
+                    if (componentLower.includes('opening')) sectionKey = 'openingLine';
+                    else if (componentLower.includes('pain')) sectionKey = 'painPoint';
+                    else if (componentLower.includes('discovery') || componentLower.includes('question')) sectionKey = 'discoveryQuestions';
+                    else if (componentLower.includes('solution')) sectionKey = 'ourSolution';
+                    else if (componentLower.includes('value')) sectionKey = 'valueStatement';
+
+                    if (roleKeys.length === 0 || !sectionKey || !content) continue;
+
+                    // Add script to all applicable roles
+                    for (const roleKey of roleKeys) {
+                        if (!newScripts[roleKey]) {
+                            newScripts[roleKey] = {};
+                        }
+                        if (!newScripts[roleKey][sectionKey]) {
+                            newScripts[roleKey][sectionKey] = [];
+                        }
+
+                        newScripts[roleKey][sectionKey].push({
+                            name: scriptName,
+                            content: content
+                        });
+                    }
                 }
 
                 // Only update if we got valid scripts
