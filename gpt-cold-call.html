@@ -1155,6 +1155,26 @@
             return mapping[roleKey] || roleKey.replace(/_/g, ' ');
         }
 
+        function mapRoleLabelToKey(roleLabel) {
+            const label = (roleLabel || '').toUpperCase();
+            if (!label) return null;
+            if (label.includes('ALL')) return 'ALL';
+            if (label.includes('CEO') || label.includes('FOUNDER')) return 'CEO_FOUNDER';
+            if (label.includes('CRO')) return 'CRO';
+            if (label.includes('HEAD') && label.includes('SALES')) return 'HEAD_OF_SALES';
+            if (label.includes('ENABLEMENT')) return 'SALES_ENABLEMENT';
+            return label.replace(/[^A-Z0-9]/g, '_').replace(/__+/g, '_');
+        }
+
+        function getRoleKeysFromValues(roleValues, roleFallback) {
+            const values = roleValues && roleValues.length ? roleValues : (roleFallback ? [roleFallback] : []);
+            const mapped = values.map(mapRoleLabelToKey).filter(Boolean);
+            if (mapped.includes('ALL')) {
+                return ['CEO_FOUNDER', 'CRO', 'HEAD_OF_SALES', 'SALES_ENABLEMENT'];
+            }
+            return Array.from(new Set(mapped));
+        }
+
         function getRolePluralLabel(roleKey) {
             const mapping = {
                 CEO_FOUNDER: 'CEOs and Founders',
@@ -1399,22 +1419,12 @@
                     const scriptName = getNotionPropertyValue(page, 'Script Name') || getNotionPropertyValue(page, 'Name') || 'Default';
                     const content = getNotionPropertyValue(page, 'Script') || getNotionPropertyValue(page, 'Content') || '';
 
-                    // Handle "ALL" role - applies to all roles
-                    const roleUpper = role.toUpperCase();
-                    let roleKeys = [];
-                    if (roleUpper.includes('ALL')) {
-                        roleKeys = ['CEO_FOUNDER', 'CRO', 'HEAD_OF_SALES', 'SALES_ENABLEMENT'];
-                    } else if (roleUpper.includes('CEO') || roleUpper.includes('FOUNDER')) {
-                        roleKeys = ['CEO_FOUNDER'];
-                    } else if (roleUpper.includes('CRO')) {
-                        roleKeys = ['CRO'];
-                    } else if (roleUpper.includes('HEAD') && roleUpper.includes('SALES')) {
-                        roleKeys = ['HEAD_OF_SALES'];
-                    } else if (roleUpper.includes('ENABLEMENT')) {
-                        roleKeys = ['SALES_ENABLEMENT'];
-                    } else {
-                        roleKeys = [roleUpper.replace(/[^A-Z0-9]/g, '_').replace(/__+/g, '_')];
-                    }
+                    const roleKeys = getRoleKeysFromValues(roleValues, role);
+                    const hasAllRole = roleKeys.length === 4
+                        && roleKeys.includes('CEO_FOUNDER')
+                        && roleKeys.includes('CRO')
+                        && roleKeys.includes('HEAD_OF_SALES')
+                        && roleKeys.includes('SALES_ENABLEMENT');
 
                     // Map component names to section keys (handles "1. Opening Line", "2. Pain Point", etc.)
                     let sectionKey = '';
@@ -1429,7 +1439,7 @@
                     if (roleKeys.length === 0 || !sectionKey || !content) continue;
 
                     const componentLabel = getComponentLabel(sectionKey);
-                    const roleLabelForKey = roleUpper.includes('ALL') ? 'ALL' : (roleValues[0] || role || getRoleLabelFromKey(roleKeys[0]));
+                    const roleLabelForKey = hasAllRole ? 'ALL' : (roleValues[0] || role || getRoleLabelFromKey(roleKeys[0]));
                     const scriptKey = buildScriptKey(roleLabelForKey, componentLabel, scriptName);
                     state.notionScriptPageIds[scriptKey] = page.id;
 
