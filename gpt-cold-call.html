@@ -836,6 +836,14 @@
                         <span class="lead-detail-value" id="leadLinkedIn">-</span>
                     </div>
                     <div class="lead-detail">
+                        <span class="lead-detail-label">Times Called</span>
+                        <span class="lead-detail-value" id="leadCallCount">-</span>
+                    </div>
+                    <div class="lead-detail">
+                        <span class="lead-detail-label">Last Call</span>
+                        <span class="lead-detail-value" id="leadLastCall">-</span>
+                    </div>
+                    <div class="lead-detail">
                         <span class="lead-detail-label">Qualifying Signals</span>
                     </div>
                     <div class="qualifying-signals" id="leadSignals">-</div>
@@ -1786,12 +1794,16 @@
             const lead = state.filteredLeads[state.currentIndex];
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
+            const callCount = getCallCount(leadId);
+            const lastCall = state.callHistory[leadId]?.[callCount - 1]?.date || lead.lastCall;
 
             document.getElementById('leadName').textContent = lead.contactName || 'Unknown';
             document.getElementById('leadCompany').textContent = lead.company || '-';
             document.getElementById('leadPhone').textContent = formatPhone(lead.phone);
             document.getElementById('leadLocation').textContent = getLocationFromPhone(lead.phone);
             document.getElementById('leadVertical').textContent = lead.vertical || '-';
+            document.getElementById('leadCallCount').textContent = callCount.toString();
+            document.getElementById('leadLastCall').textContent = lastCall ? formatDate(lastCall) : '-';
             document.getElementById('leadSignals').textContent = lead.qualifyingSignals || 'No signals available';
 
             const linkedInEl = document.getElementById('leadLinkedIn');
@@ -1820,6 +1832,8 @@
             document.getElementById('leadVertical').textContent = '-';
             document.getElementById('leadSignals').textContent = '-';
             document.getElementById('leadLinkedIn').textContent = '-';
+            document.getElementById('leadCallCount').textContent = '-';
+            document.getElementById('leadLastCall').textContent = '-';
             document.getElementById('leadRole').textContent = '-';
             document.getElementById('currentLeadNum').textContent = '0';
             document.getElementById('totalLeads').textContent = '0';
