@@ -757,12 +757,10 @@
 
         <section class="upload-section" id="uploadSection">
             <h2>Get Started</h2>
-            <p>Import your leads from CSV or connect to Notion</p>
+            <p>Connect to Notion to import your leads and scripts</p>
             <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
-                <label class="upload-label" for="csvUpload">📄 Upload CSV</label>
                 <button class="upload-label" id="connectNotionBtn" style="background: #000; border: none; cursor: pointer;">📝 Connect Notion</button>
             </div>
-            <input type="file" id="csvUpload" accept=".csv">
         </section>
 
         <section class="filters-bar" id="filtersBar">
@@ -952,9 +950,14 @@
                             <small>Create at <a href="https://www.notion.so/my-integrations" target="_blank">notion.so/my-integrations</a></small>
                         </div>
                         <div>
-                            <label>Database ID</label>
+                            <label>Leads Database ID</label>
                             <input type="text" id="notionDatabaseId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-                            <small>Found in your Notion database URL after the workspace name</small>
+                            <small>Database containing your leads (Company, Phone, Contact name, etc.)</small>
+                        </div>
+                        <div>
+                            <label>Scripts Database ID</label>
+                            <input type="text" id="notionScriptsDatabaseId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            <small>Database containing your scripts (Role, Section, Version Name, Content)</small>
                         </div>
                         <div class="notion-checkbox">
                             <input type="checkbox" id="notionAutoSync" checked>
@@ -967,11 +970,13 @@
                     </div>
                     <div class="notion-actions">
                         <button class="btn btn-notion" id="testNotionBtn">Test Connection</button>
-                        <button class="btn btn-primary" id="syncFromNotionBtn">↓ Pull from Notion</button>
+                        <button class="btn btn-primary" id="syncFromNotionBtn">↓ Pull Leads</button>
+                        <button class="btn btn-primary" id="syncScriptsBtn" style="background: #805ad5;">↓ Pull Scripts</button>
                         <button class="btn btn-success" id="syncToNotionBtn">↑ Push to Notion</button>
                     </div>
                     <small style="display: block; margin-top: 15px; color: #718096;">
-                        Required Notion columns: Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Cold Call Notes, Cold Call Status
+                        <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Cold Call Notes, Cold Call Status, Objections<br>
+                        <strong>Scripts DB columns:</strong> Role (select), Section (select), Version Name (title), Content (rich_text)
                     </small>
                 </div>
             </div>
@@ -1034,6 +1039,7 @@
                 enabled: false,
                 apiKey: '',
                 databaseId: '',
+                scriptsDatabaseId: '',
                 autoSync: true,
                 lastSync: null,
                 filterHasPhone: true
@@ -1528,6 +1534,111 @@
             }
         }
 
+        async function syncScriptsFromNotion() {
+            if (!state.notion.apiKey || !state.notion.scriptsDatabaseId) {
+                alert('Please enter your Notion API key and Scripts Database ID in Settings');
+                return;
+            }
+            const statusEl = document.getElementById('notionStatus');
+            if (statusEl) {
+                statusEl.className = 'notion-status syncing';
+                statusEl.textContent = 'Pulling scripts from Notion...';
+            }
+
+            try {
+                const response = await fetch(CORS_PROXY + encodeURIComponent(`https://api.notion.com/v1/databases/${state.notion.scriptsDatabaseId}/query`), {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.notion.apiKey}`,
+                        'Content-Type': 'application/json',
+                        'Notion-Version': '2022-06-28'
+                    },
+                    body: JSON.stringify({
+                        page_size: 100
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch scripts: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const newScripts = {};
+
+                // Parse scripts from Notion
+                // Expected columns: Role (select), Section (select), Version Name (title), Content (rich_text)
+                for (const page of data.results) {
+                    const role = getNotionPropertyValue(page, 'Role') || '';
+                    const section = getNotionPropertyValue(page, 'Section') || '';
+                    const versionName = getNotionPropertyValue(page, 'Version Name') || getNotionPropertyValue(page, 'Name') || 'Default';
+                    const content = getNotionPropertyValue(page, 'Content') || getNotionPropertyValue(page, 'Script') || '';
+
+                    // Map role names to role keys
+                    let roleKey = role.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/__+/g, '_');
+                    if (role.toLowerCase().includes('ceo') || role.toLowerCase().includes('founder')) roleKey = 'CEO_FOUNDER';
+                    else if (role.toLowerCase().includes('cro')) roleKey = 'CRO';
+                    else if (role.toLowerCase().includes('head') && role.toLowerCase().includes('sales')) roleKey = 'HEAD_OF_SALES';
+                    else if (role.toLowerCase().includes('enablement')) roleKey = 'SALES_ENABLEMENT';
+
+                    // Map section names to section keys
+                    let sectionKey = section.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (section.toLowerCase().includes('opening')) sectionKey = 'openingLine';
+                    else if (section.toLowerCase().includes('pain')) sectionKey = 'painPoint';
+                    else if (section.toLowerCase().includes('discovery') || section.toLowerCase().includes('question')) sectionKey = 'discoveryQuestions';
+                    else if (section.toLowerCase().includes('solution')) sectionKey = 'ourSolution';
+                    else if (section.toLowerCase().includes('value')) sectionKey = 'valueStatement';
+
+                    if (!roleKey || !sectionKey || !content) continue;
+
+                    if (!newScripts[roleKey]) {
+                        newScripts[roleKey] = {};
+                    }
+                    if (!newScripts[roleKey][sectionKey]) {
+                        newScripts[roleKey][sectionKey] = [];
+                    }
+
+                    newScripts[roleKey][sectionKey].push({
+                        name: versionName,
+                        content: content
+                    });
+                }
+
+                // Only update if we got valid scripts
+                if (Object.keys(newScripts).length > 0) {
+                    // Merge with defaults for any missing roles/sections
+                    const defaults = getDefaultScripts();
+                    for (const role of Object.keys(defaults)) {
+                        if (!newScripts[role]) {
+                            newScripts[role] = defaults[role];
+                        } else {
+                            for (const section of Object.keys(defaults[role])) {
+                                if (!newScripts[role][section] || newScripts[role][section].length === 0) {
+                                    newScripts[role][section] = defaults[role][section];
+                                }
+                            }
+                        }
+                    }
+                    state.scripts = newScripts;
+                    saveState();
+                    renderScript();
+                    if (statusEl) {
+                        statusEl.className = 'notion-status connected';
+                        statusEl.textContent = `Pulled scripts for ${Object.keys(newScripts).length} roles`;
+                    }
+                    alert(`Successfully imported scripts for ${Object.keys(newScripts).length} roles from Notion!`);
+                } else {
+                    throw new Error('No valid scripts found in database. Check column names: Role, Section, Version Name, Content');
+                }
+            } catch (error) {
+                console.error('Script sync error:', error);
+                if (statusEl) {
+                    statusEl.className = 'notion-status disconnected';
+                    statusEl.textContent = `Script sync failed: ${error.message}`;
+                }
+                alert(`Failed to sync scripts: ${error.message}`);
+            }
+        }
+
         function updateNotionStatusUI() {
             const statusEl = document.getElementById('notionStatus');
             if (!statusEl) return;
@@ -1545,6 +1656,7 @@
         function loadNotionSettings() {
             document.getElementById('notionApiKey').value = state.notion.apiKey || '';
             document.getElementById('notionDatabaseId').value = state.notion.databaseId || '';
+            document.getElementById('notionScriptsDatabaseId').value = state.notion.scriptsDatabaseId || '';
             document.getElementById('notionAutoSync').checked = state.notion.autoSync !== false;
             document.getElementById('notionFilterHasPhone').checked = state.notion.filterHasPhone !== false;
             updateNotionStatusUI();
@@ -1553,6 +1665,7 @@
         function saveNotionSettings() {
             state.notion.apiKey = document.getElementById('notionApiKey').value.trim();
             state.notion.databaseId = document.getElementById('notionDatabaseId').value.trim().replace(/-/g, '');
+            state.notion.scriptsDatabaseId = document.getElementById('notionScriptsDatabaseId').value.trim().replace(/-/g, '');
             state.notion.autoSync = document.getElementById('notionAutoSync').checked;
             state.notion.filterHasPhone = document.getElementById('notionFilterHasPhone').checked;
             saveState();
@@ -2222,7 +2335,6 @@
             document.getElementById('uploadSection').classList.remove('hidden');
             document.getElementById('mainContent').classList.remove('active');
             document.getElementById('filtersBar').classList.remove('active');
-            document.getElementById('csvUpload').value = '';
         }
 
         // ============================================
@@ -2230,24 +2342,6 @@
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
             loadState();
-
-            document.getElementById('csvUpload').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    state.leads = parseCSV(event.target.result);
-                    state.currentIndex = 0;
-                    if (state.isFirstLoad) {
-                        state.filters = { answered: false, noAnswer: false, notCalled: true, role: 'all', region: 'all' };
-                        state.isFirstLoad = false;
-                    }
-                    showMainContent();
-                    applyFilters();
-                    saveState();
-                };
-                reader.readAsText(file);
-            });
 
             document.getElementById('prevBtn').addEventListener('click', moveToPrevious);
             document.getElementById('btnAnswered').addEventListener('click', () => recordCall('answered'));
@@ -2306,8 +2400,13 @@
             });
             document.getElementById('notionApiKey').addEventListener('change', saveNotionSettings);
             document.getElementById('notionDatabaseId').addEventListener('change', saveNotionSettings);
+            document.getElementById('notionScriptsDatabaseId').addEventListener('change', saveNotionSettings);
             document.getElementById('notionAutoSync').addEventListener('change', saveNotionSettings);
             document.getElementById('notionFilterHasPhone').addEventListener('change', saveNotionSettings);
+            document.getElementById('syncScriptsBtn').addEventListener('click', () => {
+                saveNotionSettings();
+                syncScriptsFromNotion();
+            });
 
             document.querySelectorAll('#historyTabs .history-tab').forEach(tab => {
                 tab.addEventListener('click', () => {
