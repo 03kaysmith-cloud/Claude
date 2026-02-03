@@ -1264,6 +1264,14 @@
                         state.notionPropertyTypes = state.notionPropertyTypes || {};
                         state.notionPropertyTypes.Caller = page.properties.Caller.type;
                     }
+                    if (page.properties?.['2nd Caller']?.type) {
+                        state.notionPropertyTypes = state.notionPropertyTypes || {};
+                        state.notionPropertyTypes['2nd Caller'] = page.properties['2nd Caller'].type;
+                    }
+                    if (page.properties?.['3rd Caller']?.type) {
+                        state.notionPropertyTypes = state.notionPropertyTypes || {};
+                        state.notionPropertyTypes['3rd Caller'] = page.properties['3rd Caller'].type;
+                    }
                     // Load existing call data from Notion
                     const callCount = getNotionPropertyValue(page, 'No. of Calls') || 0;
                     const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
@@ -1271,6 +1279,9 @@
                     const objections = getNotionPropertyValue(page, 'Objections') || '';
                     const lastCallDate = getNotionPropertyValue(page, 'Last Call');
                     const caller = getNotionPropertyValue(page, 'Caller') || '';
+                    const secondCaller = getNotionPropertyValue(page, '2nd Caller') || '';
+                    const thirdCaller = getNotionPropertyValue(page, '3rd Caller') || '';
+                    const lastCaller = thirdCaller || secondCaller || caller || '';
 
                     const lead = {
                         company: getNotionPropertyValue(page, 'Company'),
@@ -1286,7 +1297,10 @@
                         lastCall: lastCallDate || null,
                         callCount: callCount,
                         callStatus: callStatus || '',
-                        caller: caller,
+                        firstCaller: caller,
+                        secondCaller: secondCaller,
+                        thirdCaller: thirdCaller,
+                        caller: lastCaller,
                         notionPageId: page.id
                     };
                     // Store page ID mapping
@@ -1379,18 +1393,36 @@
                 await notionRequest(`/pages/${pageId}`, 'PATCH', { properties });
 
                 if (callerName) {
-                    const callerType = state.notionPropertyTypes?.Caller;
                     const callerProperties = {};
-                    if (callerType === 'people') {
-                        const userId = await getNotionUserIdByName(callerName);
-                        if (userId) {
-                            callerProperties['Caller'] = { people: [{ id: userId }] };
-                        }
-                    } else if (callerType === 'select') {
-                        callerProperties['Caller'] = { select: { name: callerName } };
-                    } else if (callerType === 'rich_text') {
-                        callerProperties['Caller'] = { rich_text: [{ text: { content: callerName.substring(0, 2000) } }] };
+                    const callCountForCaller = lead.callCount || callCount;
+                    const callerAssignments = [
+                        { key: 'Caller', value: lead.firstCaller, matchCount: 1 },
+                        { key: '2nd Caller', value: lead.secondCaller, matchCount: 2 },
+                        { key: '3rd Caller', value: lead.thirdCaller, matchCount: 3 }
+                    ];
+                    if (callCountForCaller === 1) {
+                        callerAssignments[0].value = callerName;
+                    } else if (callCountForCaller === 2) {
+                        callerAssignments[1].value = callerName;
+                    } else if (callCountForCaller === 3) {
+                        callerAssignments[2].value = callerName;
                     }
+
+                    for (const assignment of callerAssignments) {
+                        if (!assignment.value) continue;
+                        const callerType = state.notionPropertyTypes?.[assignment.key] || state.notionPropertyTypes?.Caller;
+                        if (callerType === 'people') {
+                            const userId = await getNotionUserIdByName(assignment.value);
+                            if (userId) {
+                                callerProperties[assignment.key] = { people: [{ id: userId }] };
+                            }
+                        } else if (callerType === 'select' || !callerType) {
+                            callerProperties[assignment.key] = { select: { name: assignment.value } };
+                        } else if (callerType === 'rich_text') {
+                            callerProperties[assignment.key] = { rich_text: [{ text: { content: assignment.value.substring(0, 2000) } }] };
+                        }
+                    }
+
                     if (Object.keys(callerProperties).length > 0) {
                         await notionRequest(`/pages/${pageId}`, 'PATCH', { properties: callerProperties });
                     }
@@ -1848,6 +1880,13 @@
                 lead.callNotes = notes;
                 lead.objections = objections;
                 lead.caller = state.currentRep;
+                if (lead.callCount === 1) {
+                    lead.firstCaller = state.currentRep;
+                } else if (lead.callCount === 2) {
+                    lead.secondCaller = state.currentRep;
+                } else if (lead.callCount === 3) {
+                    lead.thirdCaller = state.currentRep;
+                }
             }
             saveState();
 
@@ -2045,6 +2084,8 @@
                 const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : item.status === 'do_not_call' ? 'do-not-call' : '';
                 const lastCallDate = item.lead.lastCall;
                 const dateDisplay = lastCallDate ? formatDate(lastCallDate) : '';
+                const callers = [item.lead.firstCaller, item.lead.secondCaller, item.lead.thirdCaller].filter(Boolean);
+                const callerDisplay = callers.length ? callers.join(' → ') : item.lead.caller;
                 return `
                     <div class="history-item ${statusClass}">
                         <div class="history-item-header">
@@ -2055,7 +2096,7 @@
                             ${dateDisplay ? `<div class="history-item-date">${dateDisplay}</div>` : ''}
                         </div>
                         <div class="history-item-phone">${formatPhone(item.lead.phone)}</div>
-                        ${item.lead.caller ? `<div class="history-item-notes"><strong>Caller:</strong> ${item.lead.caller}</div>` : ''}
+                        ${callerDisplay ? `<div class="history-item-notes"><strong>Callers:</strong> ${callerDisplay}</div>` : ''}
                         ${item.allNotes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.allNotes}</div>` : ''}
                         ${item.allObjections ? `<div class="history-item-notes" style="color: #c53030;"><strong>Objections:</strong> ${item.allObjections}</div>` : ''}
                     </div>
@@ -2067,13 +2108,13 @@
         // CSV EXPORT
         // ============================================
         function exportCSV() {
-            const headers = ['Company', 'Location', 'Phone', 'Vertical', 'Contact Name', 'Role', 'Qualifying Signals', 'LinkedIn URL', 'Call Status', 'Times Called', 'Last Call Date', 'Latest Notes', 'Caller'];
+            const headers = ['Company', 'Location', 'Phone', 'Vertical', 'Contact Name', 'Role', 'Qualifying Signals', 'LinkedIn URL', 'Call Status', 'Times Called', 'Last Call Date', 'Latest Notes', 'Caller', '2nd Caller', '3rd Caller'];
             const rows = state.leads.map(lead => {
                 const leadId = generateLeadId(lead);
                 const status = getLeadStatus(leadId);
                 const callStatus = status === 'answered' ? 'Answered' : status === 'no_answer' ? 'Call again' : status === 'do_not_call' ? 'Do not call' : 'Not Called';
                 const lastCallDate = lead.lastCall;
-                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, lead.callCount || 0, lastCallDate ? formatDate(lastCallDate) : '', lead.callNotes || '', lead.caller || ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
+                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, lead.callCount || 0, lastCallDate ? formatDate(lastCallDate) : '', lead.callNotes || '', lead.firstCaller || '', lead.secondCaller || '', lead.thirdCaller || ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
             });
             const csv = [headers.join(','), ...rows].join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
