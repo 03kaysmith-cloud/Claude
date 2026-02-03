@@ -888,7 +888,7 @@
                         <button class="btn btn-primary" id="notionSyncBtn">↻ Sync Scripts</button>
                     </div>
                     <small style="display: block; margin-top: 15px; color: #718096;">
-                    <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Last Call, Cold Call Notes, Cold Call Status, Objections<br>
+                    <strong>Leads DB columns:</strong> Company (title), Phone, Contact name, Role, Vertical, Qualifying Signals, LinkedIn URL, Location, No. of Calls, Call, Last Call, Call again, Cold Call Notes, Cold Call Status, Objections<br>
                         <strong>Scripts DB columns:</strong> Component (select), Script (rich_text), Script Name (title), Role of Lead (multi-select)
                     </small>
                 </div>
@@ -911,6 +911,7 @@
                     <button class="history-tab answered active" data-status="answered">Answered</button>
                     <button class="history-tab no-answer" data-status="no_answer">No Answer</button>
                     <button class="history-tab not-called" data-status="not_called">Not Called</button>
+                    <button class="history-tab no-answer" data-status="upcoming">Upcoming</button>
                     <button class="history-tab do-not-call" data-status="do_not_call">Do Not Call</button>
                 </div>
                 <div class="history-list" id="historyList"></div>
@@ -1025,6 +1026,16 @@
         function getCallCount(leadId) {
             const lead = state.leads.find(item => generateLeadId(item) === leadId);
             return lead?.callCount || 0;
+        }
+
+        function isCallAgainInFuture(lead) {
+            if (!lead?.callAgain) return false;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const callAgainDate = new Date(lead.callAgain);
+            if (Number.isNaN(callAgainDate.getTime())) return false;
+            callAgainDate.setHours(0, 0, 0, 0);
+            return callAgainDate > today;
         }
 
         function formatDate(date) {
@@ -1278,6 +1289,7 @@
                     const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
                     const objections = getNotionPropertyValue(page, 'Objections') || '';
                     const lastCallDate = getNotionPropertyValue(page, 'Last Call');
+                    const callAgainDate = getNotionPropertyValue(page, 'Call again');
                     const caller = getNotionPropertyValue(page, 'Caller') || '';
                     const secondCaller = getNotionPropertyValue(page, '2nd Caller') || '';
                     const thirdCaller = getNotionPropertyValue(page, '3rd Caller') || '';
@@ -1295,6 +1307,7 @@
                         objections: objections,
                         callNotes: coldCallNotes || '',
                         lastCall: lastCallDate || null,
+                        callAgain: callAgainDate || null,
                         callCount: callCount,
                         callStatus: callStatus || '',
                         firstCaller: caller,
@@ -1362,9 +1375,12 @@
 
             // Determine "Follow Up" column value (only for answered calls)
             let followUp = null;
-            if (callStatus === 'Answered') {
-                followUp = lead.dontFollowUp ? "Don't follow up" : 'Follow up';
-            }
+                if (callStatus === 'Answered') {
+                    followUp = lead.dontFollowUp ? "Don't follow up" : 'Follow up';
+                }
+                const callAgainDate = callStatus === 'Call again'
+                    ? (lead.callAgain ? new Date(lead.callAgain).toISOString().split('T')[0] : null)
+                    : null;
 
             // Get call notes from the latest call (do not append history on each sync)
             const callNotes = state.leadCallNotes?.[leadId] || lead.callNotes || '';
@@ -1382,7 +1398,8 @@
                     'Last Call': { date: { start: lastCallDate } },
                     'Cold Call Notes': { rich_text: [{ text: { content: allNotes.substring(0, 2000) } }] },
                     'Call': { select: { name: callStatus } },
-                    'Objections': { rich_text: [{ text: { content: allObjections.substring(0, 2000) } }] }
+                    'Objections': { rich_text: [{ text: { content: allObjections.substring(0, 2000) } }] },
+                    'Call again': { date: callAgainDate ? { start: callAgainDate } : null }
                 };
 
                 // Only update Follow up status if it's an answered call
@@ -1663,7 +1680,7 @@
                     if (!(state.filters.noAnswer && state.filters.notCalled)) {
                         let statusMatch = false;
                         if (state.filters.answered && hasAnswered) statusMatch = true;
-                        if (state.filters.noAnswer && hasNoAnswer) statusMatch = true;
+                        if (state.filters.noAnswer && hasNoAnswer && !isCallAgainInFuture(lead)) statusMatch = true;
                         if (state.filters.notCalled && isNotCalled) statusMatch = true;
                         if (!statusMatch) return false;
                     }
@@ -1872,10 +1889,19 @@
                 lead.callCount = (lead.callCount || 0) + 1;
                 if (status === 'answered') {
                     lead.callStatus = 'Answered';
+                    lead.callAgain = null;
                 } else if (status === 'no_answer') {
                     lead.callStatus = lead.callCount >= 3 ? 'Do not call' : 'Call again';
+                    if (lead.callStatus === 'Call again') {
+                        const nextCall = new Date(callDate);
+                        nextCall.setDate(nextCall.getDate() + 6);
+                        lead.callAgain = nextCall.toISOString();
+                    } else {
+                        lead.callAgain = null;
+                    }
                 } else {
                     lead.callStatus = 'Do not call';
+                    lead.callAgain = null;
                 }
                 lead.callNotes = notes;
                 lead.objections = objections;
@@ -2064,12 +2090,14 @@
                 const allNotes = lead.callNotes || '';
                 const allObjections = lead.objections || '';
 
-                if (state.historyTab === 'do_not_call' && isOnDoNotCallList(leadId)) {
+                if (state.historyTab === 'upcoming' && status === 'no_answer' && isCallAgainInFuture(lead)) {
+                    items.push({ lead, status: 'upcoming', callCount, allNotes, allObjections });
+                } else if (state.historyTab === 'do_not_call' && isOnDoNotCallList(leadId)) {
                     items.push({ lead, status: 'do_not_call', callCount, allNotes, allObjections });
                 } else if (state.historyTab === 'not_called' && status === 'not_called') {
                     items.push({ lead, status: 'not_called', callCount, allNotes, allObjections });
-                } else if (state.historyTab !== 'not_called' && state.historyTab !== 'do_not_call') {
-                    if (status === state.historyTab) {
+                } else if (!['not_called', 'do_not_call', 'upcoming'].includes(state.historyTab)) {
+                    if (status === state.historyTab && !isCallAgainInFuture(lead)) {
                         items.push({ lead, status, callCount, allNotes, allObjections });
                     }
                 }
@@ -2081,11 +2109,20 @@
             }
 
             container.innerHTML = items.map(item => {
-                const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : item.status === 'do_not_call' ? 'do-not-call' : '';
+                const statusClass = item.status === 'answered'
+                    ? 'answered'
+                    : item.status === 'no_answer' || item.status === 'upcoming'
+                        ? 'no-answer'
+                        : item.status === 'do_not_call'
+                            ? 'do-not-call'
+                            : '';
                 const lastCallDate = item.lead.lastCall;
                 const dateDisplay = lastCallDate ? formatDate(lastCallDate) : '';
                 const callers = [item.lead.firstCaller, item.lead.secondCaller, item.lead.thirdCaller].filter(Boolean);
                 const callerDisplay = callers.length ? callers.join(' → ') : item.lead.caller;
+                const callAgainDisplay = item.status === 'upcoming' && item.lead.callAgain
+                    ? formatDate(item.lead.callAgain)
+                    : '';
                 return `
                     <div class="history-item ${statusClass}">
                         <div class="history-item-header">
@@ -2097,6 +2134,7 @@
                         </div>
                         <div class="history-item-phone">${formatPhone(item.lead.phone)}</div>
                         ${callerDisplay ? `<div class="history-item-notes"><strong>Callers:</strong> ${callerDisplay}</div>` : ''}
+                        ${callAgainDisplay ? `<div class="history-item-notes"><strong>Call again:</strong> ${callAgainDisplay}</div>` : ''}
                         ${item.allNotes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.allNotes}</div>` : ''}
                         ${item.allObjections ? `<div class="history-item-notes" style="color: #c53030;"><strong>Objections:</strong> ${item.allObjections}</div>` : ''}
                     </div>
