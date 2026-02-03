@@ -1156,7 +1156,9 @@
             if (cached) return cached;
             try {
                 const result = await notionRequest('/users');
-                const user = result?.results?.find(item => item.name && item.name.toLowerCase() === name.toLowerCase());
+                const normalized = name.toLowerCase();
+                const user = result?.results?.find(item => item.name && item.name.toLowerCase() === normalized)
+                    || result?.results?.find(item => item.name && item.name.toLowerCase().includes(normalized));
                 if (user?.id) {
                     state.notionUserIds[name] = user.id;
                     return user.id;
