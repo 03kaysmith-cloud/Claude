@@ -738,6 +738,10 @@
                         <span class="lead-detail-value" id="leadLastCall">-</span>
                     </div>
                     <div class="lead-detail">
+                        <span class="lead-detail-label">Last Caller</span>
+                        <span class="lead-detail-value" id="leadCaller">-</span>
+                    </div>
+                    <div class="lead-detail">
                         <span class="lead-detail-label">Qualifying Signals</span>
                     </div>
                     <div class="qualifying-signals" id="leadSignals">-</div>
@@ -950,6 +954,8 @@
             },
             notionPageIds: {}, // Maps leadId to Notion page ID
             notionScriptPageIds: {}, // Maps script keys to Notion page ID
+            notionPropertyTypes: {}, // Maps Notion property names to types
+            notionUserIds: {}, // Cache of Notion user IDs by name
             leadObjections: {}, // Maps leadId to objection notes text
             leadCallNotes: {} // Maps leadId to call notes text
         };
@@ -1002,24 +1008,23 @@
         }
 
         function getLeadStatus(leadId) {
-            const history = state.callHistory[leadId];
-            if (!history || history.length === 0) return 'not_called';
-            return history[history.length - 1].status;
+            const lead = state.leads.find(item => generateLeadId(item) === leadId);
+            const status = lead?.callStatus;
+            if (!status) return 'not_called';
+            if (status === 'Answered') return 'answered';
+            if (status === 'Call again') return 'no_answer';
+            if (status === 'Do not call') return 'do_not_call';
+            return 'not_called';
         }
 
         function isOnDoNotCallList(leadId) {
-            const history = state.callHistory[leadId] || [];
-            // Check if any call was "didnt_ring"
-            const hasDidntRing = history.some(h => h.status === 'didnt_ring');
-            if (hasDidntRing) return true;
-            // Check if 3+ calls with no answer
-            const noAnswerCount = history.filter(h => h.status === 'no_answer').length;
-            return noAnswerCount >= 3;
+            const lead = state.leads.find(item => generateLeadId(item) === leadId);
+            return lead?.callStatus === 'Do not call';
         }
 
         function getCallCount(leadId) {
-            const history = state.callHistory[leadId] || [];
-            return history.length;
+            const lead = state.leads.find(item => generateLeadId(item) === leadId);
+            return lead?.callCount || 0;
         }
 
         function formatDate(date) {
@@ -1145,6 +1150,23 @@
             return prop.multi_select?.map(s => s.name).filter(Boolean) || [];
         }
 
+        async function getNotionUserIdByName(name) {
+            if (!name) return null;
+            const cached = state.notionUserIds[name];
+            if (cached) return cached;
+            try {
+                const result = await notionRequest('/users');
+                const user = result?.results?.find(item => item.name && item.name.toLowerCase() === name.toLowerCase());
+                if (user?.id) {
+                    state.notionUserIds[name] = user.id;
+                    return user.id;
+                }
+            } catch (error) {
+                console.error('Failed to fetch Notion users:', error);
+            }
+            return null;
+        }
+
         function getRoleLabelFromKey(roleKey) {
             const mapping = {
                 CEO_FOUNDER: 'CEO / FOUNDER',
@@ -1236,12 +1258,17 @@
                 }
 
                 state.leads = allPages.map(page => {
+                    if (page.properties?.Caller?.type) {
+                        state.notionPropertyTypes = state.notionPropertyTypes || {};
+                        state.notionPropertyTypes.Caller = page.properties.Caller.type;
+                    }
                     // Load existing call data from Notion
                     const callCount = getNotionPropertyValue(page, 'No. of Calls') || 0;
                     const callStatus = getNotionPropertyValue(page, 'Call'); // Do not call, Call again, Answered
                     const coldCallNotes = getNotionPropertyValue(page, 'Cold Call Notes');
                     const objections = getNotionPropertyValue(page, 'Objections') || '';
                     const lastCallDate = getNotionPropertyValue(page, 'Last Call');
+                    const caller = getNotionPropertyValue(page, 'Caller') || '';
 
                     const lead = {
                         company: getNotionPropertyValue(page, 'Company'),
@@ -1255,6 +1282,9 @@
                         objections: objections,
                         callNotes: coldCallNotes || '',
                         lastCall: lastCallDate || null,
+                        callCount: callCount,
+                        callStatus: callStatus || '',
+                        caller: caller,
                         notionPageId: page.id
                     };
                     // Store page ID mapping
@@ -1270,35 +1300,10 @@
                         state.leadCallNotes[leadId] = coldCallNotes;
                     }
 
-                    // If there's call history in Notion, populate local state
-                    if (callCount > 0 && !state.callHistory[leadId]) {
-                        // Map Notion "Call" column to local status
-                        const statusMap = {
-                            'Answered': 'answered',
-                            'Call again': 'no_answer',
-                            'Do not call': 'didnt_ring'  // Treat as didnt_ring so it goes to Do Not Call list
-                        };
-                        const localStatus = statusMap[callStatus] || 'no_answer';
-
-                        // Create history entries based on call count
-                        state.callHistory[leadId] = [];
-                        for (let i = 0; i < callCount; i++) {
-                            const isLastCall = i === callCount - 1;
-                            const callDate = isLastCall && lastCallDate
-                                ? new Date(lastCallDate).toISOString()
-                                : new Date().toISOString();
-                            state.callHistory[leadId].push({
-                                date: callDate,
-                                status: isLastCall ? localStatus : 'no_answer', // Last call has actual status
-                                notes: isLastCall ? coldCallNotes : '', // Notes only on last call
-                                objections: isLastCall ? objections : '', // Objections only on last call
-                                dontFollowUp: false,
-                                rep: 'Imported'
-                            });
-                        }
-                    }
                     return lead;
                 });
+
+                state.callHistory = {};
 
                 state.currentIndex = 0;
                 state.notion.lastSync = new Date().toISOString();
@@ -1329,38 +1334,31 @@
             const pageId = state.notionPageIds[leadId];
             if (!pageId) return;
 
-            const history = state.callHistory[leadId] || [];
-            const callCount = history.length;
-            const lastCall = history[history.length - 1];
-            if (!lastCall) return;
+            const callCount = lead.callCount || 0;
+            if (!callCount) return;
+            const lastCallDate = lead.lastCall
+                ? new Date(lead.lastCall).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0];
 
             // Determine "Call" column value
             let callStatus;
-            if (lastCall.status === 'didnt_ring') {
-                callStatus = 'Do not call';
-            } else if (lastCall.status === 'answered') {
-                callStatus = 'Answered';
-            } else if (lastCall.status === 'no_answer') {
-                callStatus = callCount >= 3 ? 'Do not call' : 'Call again';
-            }
+            callStatus = lead.callStatus || 'Call again';
 
             // Determine "Follow Up" column value (only for answered calls)
             let followUp = null;
-            if (lastCall.status === 'answered') {
-                followUp = lastCall.dontFollowUp ? "Don't follow up" : 'Follow up';
+            if (callStatus === 'Answered') {
+                followUp = lead.dontFollowUp ? "Don't follow up" : 'Follow up';
             }
 
             // Get call notes from the latest call (do not append history on each sync)
-            const callNotes = lastCall?.notes || state.leadCallNotes?.[leadId] || lead.callNotes || '';
+            const callNotes = state.leadCallNotes?.[leadId] || lead.callNotes || '';
             const allNotes = callNotes;
 
             // Get objection notes from leadObjections (the text box) or lead.objections
             const objectionNotes = state.leadObjections?.[leadId] || lead.objections || '';
             // Use objection notes as the primary objection content for syncing
             const allObjections = objectionNotes;
-            const lastCallDate = lastCall.date
-                ? new Date(lastCall.date).toISOString().split('T')[0]
-                : new Date().toISOString().split('T')[0];
+            const callerName = lead.caller || state.currentRep || '';
 
             try {
                 const properties = {
@@ -1374,6 +1372,17 @@
                 // Only update Follow up status if it's an answered call
                 if (followUp) {
                     properties['Follow up status'] = { select: { name: followUp } };
+                }
+                if (callerName) {
+                    const callerType = state.notionPropertyTypes?.Caller;
+                    if (callerType === 'people') {
+                        const userId = await getNotionUserIdByName(callerName);
+                        if (userId) {
+                            properties['Caller'] = { people: [{ id: userId }] };
+                        }
+                    } else {
+                        properties['Caller'] = { rich_text: [{ text: { content: callerName.substring(0, 2000) } }] };
+                    }
                 }
 
                 await notionRequest(`/pages/${pageId}`, 'PATCH', { properties });
@@ -1601,10 +1610,10 @@
         function applyFilters() {
             state.filteredLeads = state.leads.filter(lead => {
                 const leadId = generateLeadId(lead);
-                const history = state.callHistory[leadId] || [];
-                const hasAnswered = history.some(h => h.status === 'answered');
-                const hasNoAnswer = history.some(h => h.status === 'no_answer');
-                const isNotCalled = history.length === 0;
+                const status = getLeadStatus(leadId);
+                const hasAnswered = status === 'answered';
+                const hasNoAnswer = status === 'no_answer';
+                const isNotCalled = status === 'not_called';
                 const roleCategory = categorizeRole(lead.role);
                 const region = detectRegionFromPhone(lead.phone);
                 if (isOnDoNotCallList(leadId)) return false;
@@ -1637,7 +1646,7 @@
             const leadId = generateLeadId(lead);
             const roleCategory = categorizeRole(lead.role);
             const callCount = getCallCount(leadId);
-            const lastCall = state.callHistory[leadId]?.[callCount - 1]?.date || lead.lastCall;
+            const lastCall = lead.lastCall;
 
             document.getElementById('leadName').textContent = lead.contactName || 'Unknown';
             document.getElementById('leadCompany').textContent = lead.company || '-';
@@ -1646,6 +1655,7 @@
             document.getElementById('leadVertical').textContent = lead.vertical || '-';
             document.getElementById('leadCallCount').textContent = callCount.toString();
             document.getElementById('leadLastCall').textContent = lastCall ? formatDate(lastCall) : '-';
+            document.getElementById('leadCaller').textContent = lead.caller || '-';
             document.getElementById('leadSignals').textContent = lead.qualifyingSignals || 'No signals available';
 
             const linkedInEl = document.getElementById('leadLinkedIn');
@@ -1676,6 +1686,7 @@
             document.getElementById('leadLinkedIn').textContent = '-';
             document.getElementById('leadCallCount').textContent = '-';
             document.getElementById('leadLastCall').textContent = '-';
+            document.getElementById('leadCaller').textContent = '-';
             document.getElementById('leadRole').textContent = '-';
             document.getElementById('currentLeadNum').textContent = '0';
             document.getElementById('totalLeads').textContent = '0';
@@ -1683,23 +1694,19 @@
         }
 
         function renderPreviousNotes(leadId, lead) {
-            const history = state.callHistory[leadId] || [];
             const section = document.getElementById('previousNotesSection');
-            const notesWithContent = history.filter(h => h.notes && h.notes.trim());
             const fallbackNotes = state.leadCallNotes?.[leadId] || lead?.callNotes || '';
             const fallbackDate = lead?.lastCall;
-            if (notesWithContent.length === 0 && !fallbackNotes) {
+            const statusLabel = lead?.callStatus || '';
+            if (!fallbackNotes) {
                 section.style.display = 'none';
                 return;
             }
-            if (notesWithContent.length > 0) {
-                const lastNote = notesWithContent[notesWithContent.length - 1];
-                document.getElementById('previousNotesContent').textContent = lastNote.notes;
-                document.getElementById('previousNotesDate').textContent = formatDate(lastNote.date) + ' - ' + (lastNote.status === 'answered' ? 'Answered' : 'No Answer');
-            } else {
-                document.getElementById('previousNotesContent').textContent = fallbackNotes;
-                document.getElementById('previousNotesDate').textContent = fallbackDate ? formatDate(fallbackDate) : '';
-            }
+            document.getElementById('previousNotesContent').textContent = fallbackNotes;
+            const dateText = fallbackDate ? formatDate(fallbackDate) : '';
+            document.getElementById('previousNotesDate').textContent = statusLabel && dateText
+                ? `${dateText} - ${statusLabel}`
+                : (dateText || statusLabel);
             section.style.display = 'block';
         }
 
@@ -1815,20 +1822,21 @@
         }
 
         function addCallRecord(leadId, status, notes, roleCategory, dontFollowUp = false, objections = '') {
-            if (!state.callHistory[leadId]) state.callHistory[leadId] = [];
             const callDate = new Date().toISOString();
-            state.callHistory[leadId].push({
-                date: callDate,
-                status,
-                notes,
-                objections,
-                dontFollowUp,
-                scriptSnapshot: status === 'answered' ? getCurrentScriptSnapshot(roleCategory) : null,
-                rep: state.currentRep
-            });
             const lead = state.leads.find(l => generateLeadId(l) === leadId);
             if (lead) {
                 lead.lastCall = callDate;
+                lead.callCount = (lead.callCount || 0) + 1;
+                if (status === 'answered') {
+                    lead.callStatus = 'Answered';
+                } else if (status === 'no_answer') {
+                    lead.callStatus = lead.callCount >= 3 ? 'Do not call' : 'Call again';
+                } else {
+                    lead.callStatus = 'Do not call';
+                }
+                lead.callNotes = notes;
+                lead.objections = objections;
+                lead.caller = state.currentRep;
             }
             saveState();
 
@@ -2001,24 +2009,18 @@
 
             state.leads.forEach(lead => {
                 const leadId = generateLeadId(lead);
-                const history = state.callHistory[leadId] || [];
                 const status = getLeadStatus(leadId);
                 const callCount = getCallCount(leadId);
-
-                // Get all notes and objections combined for this lead
-                const allNotes = history.map(h => h.notes).filter(n => n).join('\n');
-                const allObjections = history.map(h => h.objections).filter(o => o).join('\n');
+                const allNotes = lead.callNotes || '';
+                const allObjections = lead.objections || '';
 
                 if (state.historyTab === 'do_not_call' && isOnDoNotCallList(leadId)) {
-                    items.push({ lead, history: history[history.length - 1] || null, status: 'do_not_call', callCount, allNotes, allObjections });
+                    items.push({ lead, status: 'do_not_call', callCount, allNotes, allObjections });
                 } else if (state.historyTab === 'not_called' && status === 'not_called') {
-                    items.push({ lead, history: null, status: 'not_called', callCount, allNotes, allObjections });
+                    items.push({ lead, status: 'not_called', callCount, allNotes, allObjections });
                 } else if (state.historyTab !== 'not_called' && state.historyTab !== 'do_not_call') {
-                    // Show ONE entry per lead with latest call of that type
-                    const matchingCalls = history.filter(h => h.status === state.historyTab);
-                    if (matchingCalls.length > 0) {
-                        const latestCall = matchingCalls[matchingCalls.length - 1];
-                        items.push({ lead, history: latestCall, status: latestCall.status, callCount, allNotes, allObjections });
+                    if (status === state.historyTab) {
+                        items.push({ lead, status, callCount, allNotes, allObjections });
                     }
                 }
             });
@@ -2030,7 +2032,7 @@
 
             container.innerHTML = items.map(item => {
                 const statusClass = item.status === 'answered' ? 'answered' : item.status === 'no_answer' ? 'no-answer' : item.status === 'do_not_call' ? 'do-not-call' : '';
-                const lastCallDate = item.history?.date || item.lead.lastCall;
+                const lastCallDate = item.lead.lastCall;
                 const dateDisplay = lastCallDate ? formatDate(lastCallDate) : '';
                 return `
                     <div class="history-item ${statusClass}">
@@ -2042,13 +2044,9 @@
                             ${dateDisplay ? `<div class="history-item-date">${dateDisplay}</div>` : ''}
                         </div>
                         <div class="history-item-phone">${formatPhone(item.lead.phone)}</div>
+                        ${item.lead.caller ? `<div class="history-item-notes"><strong>Caller:</strong> ${item.lead.caller}</div>` : ''}
                         ${item.allNotes ? `<div class="history-item-notes"><strong>Notes:</strong> ${item.allNotes}</div>` : ''}
                         ${item.allObjections ? `<div class="history-item-notes" style="color: #c53030;"><strong>Objections:</strong> ${item.allObjections}</div>` : ''}
-                        ${item.history && item.history.scriptSnapshot ? `
-                            <div class="history-item-notes">
-                                <strong>Script used:</strong> ${item.history.scriptSnapshot.map(s => s.versionName).join(', ')}
-                            </div>
-                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -2058,14 +2056,13 @@
         // CSV EXPORT
         // ============================================
         function exportCSV() {
-            const headers = ['Company', 'Location', 'Phone', 'Vertical', 'Contact Name', 'Role', 'Qualifying Signals', 'LinkedIn URL', 'Call Status', 'Times Called', 'Last Call Date', 'Latest Notes'];
+            const headers = ['Company', 'Location', 'Phone', 'Vertical', 'Contact Name', 'Role', 'Qualifying Signals', 'LinkedIn URL', 'Call Status', 'Times Called', 'Last Call Date', 'Latest Notes', 'Caller'];
             const rows = state.leads.map(lead => {
                 const leadId = generateLeadId(lead);
-                const history = state.callHistory[leadId] || [];
-                const lastCall = history[history.length - 1];
-                const callStatus = lastCall ? (lastCall.status === 'answered' ? 'Answered' : 'No Answer') : 'Not Called';
-                const lastCallDate = lastCall ? lastCall.date : lead.lastCall;
-                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, history.length, lastCallDate ? formatDate(lastCallDate) : '', lastCall && lastCall.notes ? lastCall.notes : ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
+                const status = getLeadStatus(leadId);
+                const callStatus = status === 'answered' ? 'Answered' : status === 'no_answer' ? 'Call again' : status === 'do_not_call' ? 'Do not call' : 'Not Called';
+                const lastCallDate = lead.lastCall;
+                return [lead.company, getLocationFromPhone(lead.phone), formatPhone(lead.phone), lead.vertical, lead.contactName, lead.role, lead.qualifyingSignals, lead.linkedInUrl, callStatus, lead.callCount || 0, lastCallDate ? formatDate(lastCallDate) : '', lead.callNotes || '', lead.caller || ''].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`).join(',');
             });
             const csv = [headers.join(','), ...rows].join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -2083,7 +2080,6 @@
         function saveState() {
             localStorage.setItem('coldCallAppState', JSON.stringify({
                 leads: state.leads,
-                callHistory: state.callHistory,
                 currentIndex: state.currentIndex,
                 filters: state.filters,
                 pushNotifications: state.pushNotifications,
@@ -2110,7 +2106,7 @@
                 try {
                     const data = JSON.parse(saved);
                     state.leads = data.leads || [];
-                    state.callHistory = data.callHistory || {};
+                    state.callHistory = {};
                     state.scripts = {};
                     state.selectedVersions = {};
                     state.currentIndex = data.currentIndex || 0;
@@ -2131,6 +2127,8 @@
                     };
                     state.notionPageIds = data.notionPageIds || {};
                     state.notionScriptPageIds = data.notionScriptPageIds || {};
+                    state.notionPropertyTypes = {};
+                    state.notionUserIds = {};
                     state.leadObjections = data.leadObjections || {};
                     state.leadCallNotes = data.leadCallNotes || {};
                     state.isFirstLoad = false;
