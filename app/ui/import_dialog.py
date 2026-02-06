@@ -3,6 +3,9 @@ Import dialog for adding new tracks to the library.
 
 Lets the user pick an MP3 and an optional SRT file,
 enter title/artist, then copies files into app storage.
+
+The artist field uses an editable combo box with autocomplete
+populated from previously entered artist names.
 """
 
 import os
@@ -11,18 +14,20 @@ import uuid
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QMessageBox,
+    QPushButton, QFileDialog, QMessageBox, QComboBox, QCompleter,
 )
 from PySide6.QtCore import Qt
 
 from settings.config import get_library_dir
+from db.database import Database
 
 
 class ImportDialog(QDialog):
     """Dialog for importing an MP3 + SRT pair."""
 
-    def __init__(self, parent=None):
+    def __init__(self, db: Database, parent=None):
         super().__init__(parent)
+        self.db = db
         self.setWindowTitle("Import Song")
         self.setMinimumWidth(500)
 
@@ -67,10 +72,25 @@ class ImportDialog(QDialog):
         self._title_edit = QLineEdit()
         layout.addWidget(self._title_edit)
 
-        # Artist
+        # Artist – editable combo box with autocomplete from existing artists
         layout.addWidget(QLabel("Artist (optional):"))
-        self._artist_edit = QLineEdit()
-        layout.addWidget(self._artist_edit)
+        self._artist_combo = QComboBox()
+        self._artist_combo.setEditable(True)
+        self._artist_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self._artist_combo.lineEdit().setPlaceholderText("Start typing to see suggestions...")
+
+        # Populate with existing artists from the database
+        existing_artists = self.db.get_all_artists()
+        self._artist_combo.addItem("")  # blank default
+        self._artist_combo.addItems(existing_artists)
+
+        # Set up case-insensitive completer
+        completer = QCompleter(existing_artists, self)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self._artist_combo.setCompleter(completer)
+
+        layout.addWidget(self._artist_combo)
 
         # Buttons
         btn_row = QHBoxLayout()
@@ -113,7 +133,7 @@ class ImportDialog(QDialog):
             return
 
         self.track_title = title
-        self.track_artist = self._artist_edit.text().strip()
+        self.track_artist = self._artist_combo.currentText().strip()
 
         # Copy files to library
         try:

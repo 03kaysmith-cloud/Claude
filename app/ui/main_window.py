@@ -236,20 +236,20 @@ class MainWindow(QMainWindow):
 
     def _toggle_serial(self):
         if self.serial.is_connected:
-            self.serial.disconnect()
+            self.serial.close_port()
         else:
             port = self._port_combo.currentText().strip()
             if not port:
                 QMessageBox.warning(self, "No Port", "Select a COM port first.")
                 return
             self.config.com_port = port
-            self.serial.connect(port, self.config.baud_rate)
+            self.serial.open_port(port, self.config.baud_rate)
 
     def _auto_connect_serial(self):
         port = self.config.com_port
         if port:
             self._port_combo.setCurrentText(port)
-            self.serial.connect(port, self.config.baud_rate)
+            self.serial.open_port(port, self.config.baud_rate)
 
     @Slot()
     def _on_serial_connected(self):
@@ -257,7 +257,30 @@ class MainWindow(QMainWindow):
         self._serial_status.setStyleSheet("color: green; font-weight: bold;")
         self._connect_btn.setText("Disconnect")
         self.serial.send_font_size(self.config.esp32_font_size)
-        # If playing, send current lyric
+        # Send current state to ESP32
+        self._send_full_state_to_esp32()
+
+    @Slot()
+    def _on_serial_disconnected(self):
+        self._serial_status.setText("Disconnected")
+        self._serial_status.setStyleSheet("color: red; font-weight: bold;")
+        self._connect_btn.setText("Connect")
+
+    def _send_full_state_to_esp32(self):
+        """Push current playback state, meta, and lyric to ESP32."""
+        if not self.serial.is_connected:
+            return
+        # Send play state
+        if self.player.is_playing:
+            self.serial.send_state("playing")
+        elif self.player.is_paused:
+            self.serial.send_state("paused")
+        else:
+            self.serial.send_state("stopped")
+        # Send meta (artist – title)
+        if self._current_track:
+            self.serial.send_meta(self._build_meta_text(self._current_track))
+        # Send current lyric
         if self._current_track and not self.player.is_stopped:
             idx, text = get_lyric_at_position(
                 self._lyrics, self.player.position,
@@ -266,18 +289,12 @@ class MainWindow(QMainWindow):
             if text:
                 self.serial.send_text(text)
 
-    @Slot()
-    def _on_serial_disconnected(self):
-        self._serial_status.setText("Disconnected")
-        self._serial_status.setStyleSheet("color: red; font-weight: bold;")
-        self._connect_btn.setText("Connect")
-
     # ═════════════════════════════════════════════════════════════
     #  IMPORT
     # ═════════════════════════════════════════════════════════════
 
     def _import_song(self):
-        dlg = ImportDialog(self)
+        dlg = ImportDialog(self.db, self)
         if dlg.exec() == ImportDialog.DialogCode.Accepted:
             track_id = self.db.add_track(
                 title=dlg.track_title,
@@ -331,6 +348,15 @@ class MainWindow(QMainWindow):
         self._playlist_pos = 0
         self._load_and_play(self._playlist_queue[0])
 
+    @staticmethod
+    def _build_meta_text(track: dict) -> str:
+        """Build 'Artist – Title' string for the ESP32 status bar."""
+        artist = track.get("artist", "").strip()
+        title = track.get("title", "").strip()
+        if artist:
+            return f"{artist} \u2013 {title}"
+        return title
+
     def _load_and_play(self, track: dict):
         """Load a track dict and start playback."""
         self._current_track = track
@@ -355,9 +381,11 @@ class MainWindow(QMainWindow):
 
         self._controls.set_now_playing(track["title"], track.get("artist", ""))
 
-        # Clear ESP32 display
+        # Send to ESP32: clear old lyric, set meta, set state
         if self.serial.is_connected:
             self.serial.send_clear()
+            self.serial.send_meta(self._build_meta_text(track))
+            self.serial.send_state("playing")
 
     def _toggle_play(self):
         if self._current_track is None:
@@ -370,6 +398,7 @@ class MainWindow(QMainWindow):
         self._controls.set_lyric("")
         if self.serial.is_connected:
             self.serial.send_clear()
+            self.serial.send_state("stopped")
         self._current_track = None
         self._last_lyric_idx = -1
 
@@ -439,6 +468,9 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _on_state(self, state: str):
         self._controls.set_playing(state == "playing")
+        # Forward play state to ESP32
+        if self.serial.is_connected:
+            self.serial.send_state(state)
 
     @Slot()
     def _on_media_ended(self):
@@ -540,6 +572,6 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.player.stop()
-        self.serial.disconnect()
+        self.serial.close_port()
         self.config.save()
         super().closeEvent(event)

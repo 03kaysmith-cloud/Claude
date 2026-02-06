@@ -4,8 +4,18 @@
  * Receives lyric text from a Windows PC over USB serial and displays
  * it on a 0.96" SSD1306 OLED (128x64, I2C).
  *
+ * Display layout:
+ *   ┌─────────────────────────┐
+ *   │  Lyrics (word-wrapped,  │  top 48 px
+ *   │  vertically scrollable) │
+ *   ├─────────────────────────┤  separator line at y=49
+ *   │ ▶  Artist – Song Title  │  status bar (y=51..63)
+ *   └─────────────────────────┘
+ *
  * Protocol (newline-delimited):
  *   PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1-3>
+ *                 STA|PLAY | STA|PAUSE | STA|STOP
+ *                 META|<artist – title>
  *   ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
  *
  * Hardware:
@@ -25,6 +35,14 @@
 #define SDA_PIN         21
 #define SCL_PIN         22
 
+// ── Layout constants ────────────────────────────────────────────────
+#define LYRICS_AREA_HEIGHT  48   // pixels for lyric text area
+#define SEPARATOR_Y         49   // y of the horizontal divider line
+#define STATUS_BAR_Y        52   // y where status bar content starts
+#define ICON_X              2    // x position of play/pause icon
+#define META_TEXT_X          16  // x position where meta text starts
+#define META_AVAIL_WIDTH    (SCREEN_WIDTH - META_TEXT_X)  // 112 px
+
 // ── Button configuration ────────────────────────────────────────────
 #define BUTTON_PIN      4
 #define DEBOUNCE_MS     50
@@ -35,21 +53,34 @@
 #define SERIAL_BUF_SIZE 512
 
 // ── Scrolling configuration ─────────────────────────────────────────
-#define SCROLL_INTERVAL_MS 2000
-#define SCROLL_STEP        16     // pixels per scroll step
+#define LYRIC_SCROLL_INTERVAL_MS  2000
+#define LYRIC_SCROLL_STEP         16    // pixels per vertical scroll step
+#define META_SCROLL_SPEED_MS      50    // ms per 1-pixel horizontal shift
+#define META_SCROLL_GAP           30    // pixel gap before text repeats
 
 // ── Connection timeout ──────────────────────────────────────────────
 #define CONNECTION_TIMEOUT_MS 10000
 
+// ── Playback state enum ─────────────────────────────────────────────
+enum PlayState { STATE_STOPPED, STATE_PLAYING, STATE_PAUSED };
+
 // ── Objects ─────────────────────────────────────────────────────────
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// ── Text / display state ────────────────────────────────────────────
+// ── Lyric text state ────────────────────────────────────────────────
 String currentText     = "";
 uint8_t textSize       = 2;       // Adafruit GFX text size (1-3)
-int  scrollOffset      = 0;
-int  totalTextHeight   = 0;
-unsigned long lastScrollTime = 0;
+int  lyricScrollOffset = 0;
+int  totalLyricHeight  = 0;
+unsigned long lastLyricScrollTime = 0;
+
+// ── Status bar state ────────────────────────────────────────────────
+String       metaText      = "";       // "Artist – Title"
+PlayState    playState     = STATE_STOPPED;
+int          metaTextWidth = 0;        // pixel width of metaText
+int          metaScrollX   = 0;        // current horizontal scroll offset
+unsigned long lastMetaScrollTime = 0;
+bool         metaNeedsScroll    = false;
 
 // ── Button state ────────────────────────────────────────────────────
 bool  lastButtonReading = HIGH;
@@ -61,11 +92,14 @@ bool  longPressSent   = false;
 
 // ── Connection state ────────────────────────────────────────────────
 bool connected = false;
-unsigned long lastActivityTime = 0;   // last time we heard from PC
+unsigned long lastActivityTime = 0;
 
 // ── Serial buffer ───────────────────────────────────────────────────
 char serialBuffer[SERIAL_BUF_SIZE];
 int  bufferPos = 0;
+
+// ── Render flag ─────────────────────────────────────────────────────
+bool displayDirty = true;
 
 // ═══════════════════════════════════════════════════════════════════
 //  SETUP
@@ -76,7 +110,6 @@ void setup() {
     Wire.begin(SDA_PIN, SCL_PIN);
 
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-        // If display init fails, blink onboard LED forever
         pinMode(2, OUTPUT);
         while (true) {
             digitalWrite(2, !digitalRead(2));
@@ -86,11 +119,10 @@ void setup() {
 
     display.clearDisplay();
     display.setTextColor(SSD1306_WHITE);
-    display.setTextWrap(false);   // we handle wrapping manually
+    display.setTextWrap(false);
     showStatus("Waiting for", "connection...");
 
     pinMode(BUTTON_PIN, INPUT_PULLUP);
-
     lastActivityTime = millis();
 }
 
@@ -100,7 +132,16 @@ void setup() {
 void loop() {
     handleSerial();
     handleButton();
-    handleScrolling();
+
+    bool needsRender = false;
+    needsRender |= handleLyricScroll();
+    needsRender |= handleMetaScroll();
+
+    if (needsRender || displayDirty) {
+        renderDisplay();
+        displayDirty = false;
+    }
+
     handleConnectionTimeout();
 }
 
@@ -127,65 +168,88 @@ void processCommand(String cmd) {
     if (cmd.length() == 0) return;
 
     lastActivityTime = millis();
+    if (!connected) connected = true;
 
     if (cmd == "PING") {
         Serial.println("PONG");
-        if (!connected) {
-            connected = true;
-            // If no text to show, display connected status
-            if (currentText.length() == 0) {
-                showStatus("Connected", "");
-            }
-        }
     }
     else if (cmd == "CLR") {
         currentText = "";
-        scrollOffset = 0;
-        display.clearDisplay();
-        display.display();
-        if (!connected) connected = true;
+        lyricScrollOffset = 0;
+        totalLyricHeight = 0;
+        displayDirty = true;
     }
     else if (cmd.startsWith("TXT|")) {
         String text = cmd.substring(4);
-        if (!connected) connected = true;
         if (text != currentText) {
             currentText = text;
-            scrollOffset = 0;
-            lastScrollTime = millis();
-            renderText();
+            lyricScrollOffset = 0;
+            lastLyricScrollTime = millis();
+            displayDirty = true;
         }
     }
     else if (cmd.startsWith("FONT|")) {
         int size = cmd.substring(5).toInt();
-        if (size >= 1 && size <= 3) {
-            if (size != textSize) {
-                textSize = (uint8_t)size;
-                scrollOffset = 0;
-                lastScrollTime = millis();
-                renderText();
-            }
+        if (size >= 1 && size <= 3 && size != textSize) {
+            textSize = (uint8_t)size;
+            lyricScrollOffset = 0;
+            lastLyricScrollTime = millis();
+            displayDirty = true;
         }
-        if (!connected) connected = true;
+    }
+    else if (cmd.startsWith("STA|")) {
+        String state = cmd.substring(4);
+        PlayState newState = STATE_STOPPED;
+        if (state == "PLAY")       newState = STATE_PLAYING;
+        else if (state == "PAUSE") newState = STATE_PAUSED;
+        else                       newState = STATE_STOPPED;
+        if (newState != playState) {
+            playState = newState;
+            displayDirty = true;
+        }
+    }
+    else if (cmd.startsWith("META|")) {
+        String text = cmd.substring(5);
+        if (text != metaText) {
+            metaText = text;
+            metaTextWidth = text.length() * 6;  // textSize 1: 6px per char
+            metaScrollX = 0;
+            lastMetaScrollTime = millis();
+            metaNeedsScroll = (metaTextWidth > META_AVAIL_WIDTH);
+            displayDirty = true;
+        }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  TEXT RENDERING  (word-wrap + vertical scroll)
+//  FULL DISPLAY RENDER
 // ═══════════════════════════════════════════════════════════════════
-void renderText() {
+void renderDisplay() {
     display.clearDisplay();
 
-    if (currentText.length() == 0) {
-        display.display();
-        return;
+    // ── 1. Lyrics area (top) ────────────────────────────────────
+    if (currentText.length() > 0) {
+        renderLyrics();
     }
 
+    // ── 2. Separator line ───────────────────────────────────────
+    display.drawFastHLine(0, SEPARATOR_Y, SCREEN_WIDTH, SSD1306_WHITE);
+
+    // ── 3. Status bar (bottom) ──────────────────────────────────
+    renderStatusBar();
+
+    display.display();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LYRICS RENDERING  (word-wrap + vertical scroll)
+// ═══════════════════════════════════════════════════════════════════
+void renderLyrics() {
     display.setTextSize(textSize);
 
-    int charW = 6 * textSize;          // pixel width of one character
-    int charH = 8 * textSize;          // pixel height of one character
+    int charW = 6 * textSize;
+    int charH = 8 * textSize;
     int charsPerLine = SCREEN_WIDTH / charW;
-
     if (charsPerLine < 1) charsPerLine = 1;
 
     // ── Word-wrap into lines ────────────────────────────────────
@@ -203,7 +267,6 @@ void renderText() {
         }
 
         int breakAt = pos + charsPerLine;
-        // Try to break at a space
         int lastSpace = -1;
         for (int i = pos; i < breakAt && i < len; i++) {
             if (currentText.charAt(i) == ' ') {
@@ -215,52 +278,122 @@ void renderText() {
             lines[lineCount++] = currentText.substring(pos, lastSpace);
             pos = lastSpace + 1;
         } else {
-            // No space found – hard break
             lines[lineCount++] = currentText.substring(pos, breakAt);
             pos = breakAt;
         }
     }
 
-    totalTextHeight = lineCount * charH;
+    totalLyricHeight = lineCount * charH;
 
-    // ── Draw visible lines ──────────────────────────────────────
-    int startY = -scrollOffset;
+    // ── Draw visible lines (clipped to lyrics area) ─────────────
+    int startY = -lyricScrollOffset;
     for (int i = 0; i < lineCount; i++) {
         int y = startY + i * charH;
-        if (y + charH > 0 && y < SCREEN_HEIGHT) {
+        if (y + charH > 0 && y < LYRICS_AREA_HEIGHT) {
             display.setCursor(0, y);
             display.print(lines[i]);
         }
     }
-
-    // ── Connection indicator (top-right dot) ────────────────────
-    if (connected) {
-        display.fillCircle(SCREEN_WIDTH - 4, 3, 2, SSD1306_WHITE);
-    }
-
-    display.display();
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SCROLLING
+//  STATUS BAR RENDERING  (play/pause icon + scrolling meta text)
 // ═══════════════════════════════════════════════════════════════════
-void handleScrolling() {
-    if (totalTextHeight <= SCREEN_HEIGHT) return;
-    if (currentText.length() == 0) return;
+void renderStatusBar() {
+    int iconCenterY = STATUS_BAR_Y + 5;  // vertical center of icon area
 
-    unsigned long now = millis();
-    if (now - lastScrollTime < SCROLL_INTERVAL_MS) return;
+    // ── Draw play/pause/stop icon ───────────────────────────────
+    switch (playState) {
+        case STATE_PLAYING:
+            // Filled triangle pointing right (play)
+            display.fillTriangle(
+                ICON_X,     STATUS_BAR_Y,
+                ICON_X,     STATUS_BAR_Y + 10,
+                ICON_X + 8, STATUS_BAR_Y + 5,
+                SSD1306_WHITE
+            );
+            break;
 
-    lastScrollTime = now;
+        case STATE_PAUSED:
+            // Two vertical bars (pause)
+            display.fillRect(ICON_X,     STATUS_BAR_Y, 3, 11, SSD1306_WHITE);
+            display.fillRect(ICON_X + 5, STATUS_BAR_Y, 3, 11, SSD1306_WHITE);
+            break;
 
-    int maxScroll = totalTextHeight - SCREEN_HEIGHT;
-    scrollOffset += SCROLL_STEP;
-
-    if (scrollOffset > maxScroll) {
-        scrollOffset = 0;            // wrap back to top
+        case STATE_STOPPED:
+            // Small square (stop)
+            display.fillRect(ICON_X, STATUS_BAR_Y, 9, 9, SSD1306_WHITE);
+            break;
     }
 
-    renderText();
+    // ── Draw meta text (artist – title) with horizontal scroll ──
+    if (metaText.length() == 0) return;
+
+    display.setTextSize(1);
+
+    if (!metaNeedsScroll) {
+        // Static: fits on screen
+        display.setCursor(META_TEXT_X, STATUS_BAR_Y + 2);
+        display.print(metaText);
+    } else {
+        // Scrolling: draw the text shifted left by metaScrollX,
+        // and clip to the available area using a manual approach.
+        // We draw character by character, only if visible.
+        int totalW = metaTextWidth + META_SCROLL_GAP;
+        int textLen = metaText.length();
+
+        for (int pass = 0; pass < 2; pass++) {
+            int baseX = META_TEXT_X - metaScrollX + pass * totalW;
+            for (int i = 0; i < textLen; i++) {
+                int cx = baseX + i * 6;
+                if (cx >= SCREEN_WIDTH) break;       // past right edge
+                if (cx + 6 <= META_TEXT_X) continue;  // before left edge
+                display.setCursor(cx, STATUS_BAR_Y + 2);
+                display.print(metaText.charAt(i));
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LYRIC VERTICAL SCROLLING
+// ═══════════════════════════════════════════════════════════════════
+bool handleLyricScroll() {
+    if (totalLyricHeight <= LYRICS_AREA_HEIGHT) return false;
+    if (currentText.length() == 0) return false;
+
+    unsigned long now = millis();
+    if (now - lastLyricScrollTime < LYRIC_SCROLL_INTERVAL_MS) return false;
+
+    lastLyricScrollTime = now;
+
+    int maxScroll = totalLyricHeight - LYRICS_AREA_HEIGHT;
+    lyricScrollOffset += LYRIC_SCROLL_STEP;
+    if (lyricScrollOffset > maxScroll) {
+        lyricScrollOffset = 0;
+    }
+
+    return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  META TEXT HORIZONTAL SCROLLING
+// ═══════════════════════════════════════════════════════════════════
+bool handleMetaScroll() {
+    if (!metaNeedsScroll) return false;
+
+    unsigned long now = millis();
+    if (now - lastMetaScrollTime < META_SCROLL_SPEED_MS) return false;
+
+    lastMetaScrollTime = now;
+
+    int totalW = metaTextWidth + META_SCROLL_GAP;
+    metaScrollX += 1;
+    if (metaScrollX >= totalW) {
+        metaScrollX = 0;
+    }
+
+    return true;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -278,12 +411,10 @@ void handleButton() {
             buttonState = reading;
 
             if (buttonState == LOW) {
-                // Pressed
                 buttonPressTime = millis();
                 buttonHeld    = true;
                 longPressSent = false;
             } else {
-                // Released
                 if (buttonHeld && !longPressSent) {
                     Serial.println("BTN|PRESS");
                 }
@@ -292,7 +423,6 @@ void handleButton() {
         }
     }
 
-    // Long-press detection while held
     if (buttonHeld && !longPressSent && buttonState == LOW) {
         if (millis() - buttonPressTime >= LONG_PRESS_MS) {
             Serial.println("BTN|LONG");
@@ -312,14 +442,19 @@ void handleConnectionTimeout() {
     if (millis() - lastActivityTime > CONNECTION_TIMEOUT_MS) {
         connected = false;
         currentText = "";
-        scrollOffset = 0;
-        totalTextHeight = 0;
+        lyricScrollOffset = 0;
+        totalLyricHeight = 0;
+        metaText = "";
+        metaTextWidth = 0;
+        metaScrollX = 0;
+        metaNeedsScroll = false;
+        playState = STATE_STOPPED;
         showStatus("Disconnected", "");
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  STATUS SCREEN  (small font, two lines)
+//  STATUS SCREEN  (used for connection messages only)
 // ═══════════════════════════════════════════════════════════════════
 void showStatus(const char* line1, const char* line2) {
     display.clearDisplay();

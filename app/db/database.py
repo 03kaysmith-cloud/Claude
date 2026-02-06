@@ -200,6 +200,16 @@ class Database:
                 (i, row["id"]),
             )
 
+    # ── Artist helpers ────────────────────────────────────────────
+
+    def get_all_artists(self) -> list[str]:
+        """Return a sorted list of distinct non-empty artist names."""
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT DISTINCT artist FROM tracks WHERE artist != '' ORDER BY artist"
+        ).fetchall()
+        return [r["artist"] for r in rows]
+
     # ── Settings ─────────────────────────────────────────────────
 
     def get_setting(self, key: str, default: str = "") -> str:

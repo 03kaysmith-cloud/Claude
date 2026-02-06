@@ -6,6 +6,8 @@ Provides thread-safe methods to send display commands.
 
 Protocol (newline-delimited, UTF-8):
     PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1-3>
+                  STA|PLAY | STA|PAUSE | STA|STOP
+                  META|<artist – title>
     ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
 """
 
@@ -67,9 +69,9 @@ class SerialConnection(QObject):
     def port(self) -> str:
         return self._port
 
-    def connect(self, port: str, baud: int = 115200) -> bool:
+    def open_port(self, port: str, baud: int = 115200) -> bool:
         """Open serial connection and start reader thread."""
-        self.disconnect()
+        self.close_port()
 
         self._port = port
         self._baud = baud
@@ -98,7 +100,7 @@ class SerialConnection(QObject):
         self.connected.emit()
         return True
 
-    def disconnect(self):
+    def close_port(self):
         """Close the serial connection."""
         self._running = False
         self._ping_timer.stop()
@@ -132,6 +134,16 @@ class SerialConnection(QObject):
         """Send FONT|<size> command (1-3)."""
         size = max(1, min(3, size))
         self._write(f"FONT|{size}\n")
+
+    def send_state(self, state: str):
+        """Send STA|PLAY, STA|PAUSE, or STA|STOP."""
+        cmd = {"playing": "PLAY", "paused": "PAUSE", "stopped": "STOP"}.get(state, "STOP")
+        self._write(f"STA|{cmd}\n")
+
+    def send_meta(self, text: str):
+        """Send META|<artist – title> for the status bar."""
+        clean = text.replace("\n", " ").replace("\r", "")
+        self._write(f"META|{clean}\n")
 
     def _send_ping(self):
         """Periodic ping (called by QTimer on main thread)."""
