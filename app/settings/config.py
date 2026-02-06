@@ -14,6 +14,7 @@ DEFAULT_CONFIG = {
     "auto_connect": True,
     "global_offset_ms": 0,
     "esp32_font_size": 2,
+    "lyric_font_size_px": 13,
     "volume": 0.7,
     "hotkeys": {
         "play_pause": "Space",
@@ -135,6 +136,15 @@ class AppConfig:
     @volume.setter
     def volume(self, val: float):
         self._data["volume"] = max(0.0, min(1.0, val))
+        self.save()
+
+    @property
+    def lyric_font_size_px(self) -> int:
+        return self._data.get("lyric_font_size_px", 13)
+
+    @lyric_font_size_px.setter
+    def lyric_font_size_px(self, val: int):
+        self._data["lyric_font_size_px"] = max(8, min(32, val))
         self.save()
 
 

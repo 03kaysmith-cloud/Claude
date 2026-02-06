@@ -60,6 +60,11 @@ class SettingsDialog(QDialog):
         self._font_spin.setSuffix("x")
         d_layout.addRow("ESP32 Font Size:", self._font_spin)
 
+        self._lyric_font_spin = QSpinBox()
+        self._lyric_font_spin.setRange(8, 32)
+        self._lyric_font_spin.setSuffix(" px")
+        d_layout.addRow("Lyric Text Size:", self._lyric_font_spin)
+
         self._global_offset_spin = QSpinBox()
         self._global_offset_spin.setRange(-30000, 30000)
         self._global_offset_spin.setSingleStep(50)
@@ -129,6 +134,7 @@ class SettingsDialog(QDialog):
             self._baud_combo.setCurrentIndex(idx)
 
         self._font_spin.setValue(self.config.esp32_font_size)
+        self._lyric_font_spin.setValue(self.config.lyric_font_size_px)
         self._global_offset_spin.setValue(self.config.global_offset_ms)
 
         # Hotkeys
@@ -157,6 +163,7 @@ class SettingsDialog(QDialog):
         self.config.com_port = self._port_combo.currentText().strip()
         self.config.set("baud_rate", int(self._baud_combo.currentText()))
         self.config.esp32_font_size = self._font_spin.value()
+        self.config.lyric_font_size_px = self._lyric_font_spin.value()
         self.config.global_offset_ms = self._global_offset_spin.value()
 
         hk = {}

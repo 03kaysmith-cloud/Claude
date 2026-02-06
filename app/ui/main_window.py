@@ -216,6 +216,7 @@ class MainWindow(QMainWindow):
     def _apply_config(self):
         self.player.set_volume(self.config.volume)
         self._controls.set_volume_slider(self.config.volume)
+        self._controls.set_lyric_font_size(self.config.lyric_font_size_px)
         if self.serial.is_connected:
             self.serial.send_font_size(self.config.esp32_font_size)
 
