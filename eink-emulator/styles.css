@@ -98,7 +98,7 @@ body {
   height: 100%;
   padding: 8px 10px;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   gap: 6px;
   font-size: 9px;
 }
@@ -142,6 +142,139 @@ body {
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
   padding: 6px 0;
+}
+
+.weather {
+  display: grid;
+  gap: 4px;
+}
+
+.weather-icons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+
+.weather-card {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  padding: 3px 0;
+  font-size: 7px;
+}
+
+.pixel-icon {
+  position: relative;
+  width: 18px;
+  height: 12px;
+}
+
+.pixel-icon::before {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--ink);
+  box-shadow: none;
+}
+
+.pixel-icon.sun::before {
+  box-shadow:
+    8px 0 0 var(--ink),
+    6px 2px 0 var(--ink),
+    8px 2px 0 var(--ink),
+    10px 2px 0 var(--ink),
+    4px 4px 0 var(--ink),
+    6px 4px 0 var(--ink),
+    8px 4px 0 var(--ink),
+    10px 4px 0 var(--ink),
+    12px 4px 0 var(--ink),
+    6px 6px 0 var(--ink),
+    8px 6px 0 var(--ink),
+    10px 6px 0 var(--ink),
+    8px 8px 0 var(--ink),
+    2px 6px 0 var(--ink),
+    14px 6px 0 var(--ink);
+  animation: sun-pulse 1.6s infinite steps(2, end);
+}
+
+.pixel-icon.cloud::before {
+  box-shadow:
+    4px 4px 0 var(--ink),
+    6px 4px 0 var(--ink),
+    8px 4px 0 var(--ink),
+    10px 4px 0 var(--ink),
+    12px 4px 0 var(--ink),
+    2px 6px 0 var(--ink),
+    4px 6px 0 var(--ink),
+    6px 6px 0 var(--ink),
+    8px 6px 0 var(--ink),
+    10px 6px 0 var(--ink),
+    12px 6px 0 var(--ink),
+    14px 6px 0 var(--ink),
+    4px 8px 0 var(--ink),
+    6px 8px 0 var(--ink),
+    8px 8px 0 var(--ink),
+    10px 8px 0 var(--ink),
+    12px 8px 0 var(--ink);
+  animation: cloud-float 2s infinite steps(2, end);
+}
+
+.pixel-icon.rain::before {
+  box-shadow:
+    4px 2px 0 var(--ink),
+    6px 2px 0 var(--ink),
+    8px 2px 0 var(--ink),
+    10px 2px 0 var(--ink),
+    12px 2px 0 var(--ink),
+    2px 4px 0 var(--ink),
+    4px 4px 0 var(--ink),
+    6px 4px 0 var(--ink),
+    8px 4px 0 var(--ink),
+    10px 4px 0 var(--ink),
+    12px 4px 0 var(--ink),
+    14px 4px 0 var(--ink),
+    4px 6px 0 var(--ink),
+    6px 6px 0 var(--ink),
+    8px 6px 0 var(--ink),
+    10px 6px 0 var(--ink),
+    12px 6px 0 var(--ink),
+    4px 10px 0 var(--ink),
+    10px 10px 0 var(--ink);
+  animation: rain-drop 1.2s infinite steps(2, end);
+}
+
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes cloud-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes rain-drop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1px);
+  }
 }
 
 .value {
