@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
 )
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QGuiApplication
 
 import os
 
@@ -19,12 +20,12 @@ class LibraryTab(QWidget):
     Signals:
         play_track(int)        - User wants to play track with given id.
         edit_offset(int)       - User wants to edit offset for track id.
-        add_to_playlist(int)   - User wants to add track id to a playlist.
+        add_to_playlist(list[int])   - User wants to add track ids to a playlist.
     """
 
     play_track = Signal(int)
     edit_offset = Signal(int)
-    add_to_playlist = Signal(int)
+    add_to_playlist = Signal(list)
 
     def __init__(self, db, parent=None):
         super().__init__(parent)
@@ -53,11 +54,12 @@ class LibraryTab(QWidget):
         self._table.horizontalHeader().setStretchLastSection(True)
         self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self._table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self._table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._table.customContextMenuRequested.connect(self._context_menu)
         self._table.doubleClicked.connect(self._on_double_click)
+        self._table.itemClicked.connect(self._on_single_click)
         self._table.verticalHeader().setVisible(False)
         layout.addWidget(self._table)
 
@@ -88,48 +90,67 @@ class LibraryTab(QWidget):
         row = rows[0].row()
         item = self._table.item(row, 0)
         return item.data(Qt.ItemDataRole.UserRole) if item else None
+ 
+    def _selected_track_ids(self) -> list[int]:
+        ids: list[int] = []
+        for row in self._table.selectionModel().selectedRows():
+            item = self._table.item(row.row(), 0)
+            if item:
+                ids.append(item.data(Qt.ItemDataRole.UserRole))
+        return ids
 
     def _on_double_click(self, index):
         tid = self._selected_track_id()
         if tid is not None:
             self.play_track.emit(tid)
 
+    def _on_single_click(self, item):
+        if QGuiApplication.keyboardModifiers() != Qt.KeyboardModifier.NoModifier:
+            return
+        ids = self._selected_track_ids()
+        if len(ids) == 1:
+            self.play_track.emit(ids[0])
+
     def _context_menu(self, pos):
-        tid = self._selected_track_id()
-        if tid is None:
+        ids = self._selected_track_ids()
+        if not ids:
             return
         menu = QMenu(self)
-        menu.addAction("Play", lambda: self.play_track.emit(tid))
-        menu.addAction("Add to Playlist...", lambda: self.add_to_playlist.emit(tid))
-        menu.addAction("Edit Lyric Offset...", lambda: self.edit_offset.emit(tid))
+        menu.addAction("Play", lambda: self.play_track.emit(ids[0]))
+        menu.addAction("Add to Playlist...", lambda: self.add_to_playlist.emit(ids))
+        if len(ids) == 1:
+            menu.addAction("Edit Lyric Offset...", lambda: self.edit_offset.emit(ids[0]))
         menu.addSeparator()
-        menu.addAction("Delete", lambda: self._delete_track(tid))
+        menu.addAction("Delete", lambda: self._delete_tracks(ids))
         menu.exec(self._table.viewport().mapToGlobal(pos))
 
-    def _delete_track(self, track_id: int):
+    def _delete_tracks(self, track_ids: list[int]):
+        if not track_ids:
+            return
         reply = QMessageBox.question(
             self, "Delete Track",
             "Remove this track from the library?\n(Files will also be deleted.)",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            track = self.db.delete_track(track_id)
-            # Clean up files
-            if track:
-                for key in ("audio_path", "srt_path"):
-                    p = track.get(key, "")
-                    if p and os.path.isfile(p):
+            for track_id in track_ids:
+                track = self.db.delete_track(track_id)
+                # Clean up files
+                if track:
+                    for key in ("audio_path", "srt_path"):
+                        p = track.get(key, "")
+                        if p and os.path.isfile(p):
+                            try:
+                                os.remove(p)
+                            except OSError:
+                                pass
+                    # Remove directory if empty
+                    if track.get("audio_path"):
+                        d = os.path.dirname(track["audio_path"])
                         try:
-                            os.remove(p)
+                            os.rmdir(d)
                         except OSError:
                             pass
-                # Remove directory if empty
-                if track.get("audio_path"):
-                    d = os.path.dirname(track["audio_path"])
-                    try:
-                        os.rmdir(d)
-                    except OSError:
-                        pass
             self.refresh()
 
     def _filter_table(self, text: str):

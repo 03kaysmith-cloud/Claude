@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
         self._library_tab.play_track.connect(self._play_track_by_id)
         self._library_tab.edit_offset.connect(self._open_offset_editor)
         self._library_tab.add_to_playlist.connect(
-            self._playlists_tab.add_track_to_current_or_choose
+            self._playlists_tab.add_tracks_to_current_or_choose
         )
 
         # Playlists

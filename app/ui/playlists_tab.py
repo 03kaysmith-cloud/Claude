@@ -85,6 +85,7 @@ class PlaylistsTab(QWidget):
         self._track_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._track_table.verticalHeader().setVisible(False)
         self._track_table.doubleClicked.connect(self._on_track_double_click)
+        self._track_table.itemClicked.connect(self._on_track_single_click)
         self._track_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._track_table.customContextMenuRequested.connect(self._track_context_menu)
         right_layout.addWidget(self._track_table)
@@ -204,6 +205,12 @@ class PlaylistsTab(QWidget):
         if pid is not None and tid is not None:
             self.play_track_in_playlist.emit(pid, tid)
 
+    def _on_track_single_click(self, item):
+        pid = self._current_playlist_id
+        tid = self._selected_track_id()
+        if pid is not None and tid is not None:
+            self.play_track_in_playlist.emit(pid, tid)
+
     def _track_context_menu(self, pos):
         tid = self._selected_track_id()
         pid = self._current_playlist_id
@@ -245,7 +252,12 @@ class PlaylistsTab(QWidget):
     # ── Public helpers ───────────────────────────────────────────
 
     def add_track_to_current_or_choose(self, track_id: int):
-        """Add a track to a playlist. If no playlist selected, ask the user to pick one."""
+        """Add track(s) to a playlist. If no playlist selected, ask the user to pick one."""
+        track_ids = [track_id]
+        self.add_tracks_to_current_or_choose(track_ids)
+
+    def add_tracks_to_current_or_choose(self, track_ids: list[int]):
+        """Add multiple tracks to a playlist. If no playlist selected, ask the user to pick one."""
         playlists = self.db.get_all_playlists()
         if not playlists:
             QMessageBox.information(self, "No Playlists", "Create a playlist first.")
@@ -267,7 +279,8 @@ class PlaylistsTab(QWidget):
         if ok and name:
             for p in playlists:
                 if p["name"] == name:
-                    self.db.add_track_to_playlist(p["id"], track_id)
+                    for track_id in track_ids:
+                        self.db.add_track_to_playlist(p["id"], track_id)
                     if self._current_playlist_id == p["id"]:
                         self._refresh_tracks(p["id"])
                     break

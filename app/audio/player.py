@@ -50,7 +50,9 @@ class AudioPlayer(QObject):
 
     def load(self, filepath: str):
         """Load an audio file for playback."""
+        self._player.stop()
         self._player.setSource(QUrl.fromLocalFile(filepath))
+        self._player.setPosition(0)
         self._last_emitted_pos = -1
 
     def play(self):
