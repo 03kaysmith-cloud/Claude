@@ -13,7 +13,8 @@
  *   └─────────────────────────┘
  *
  * Protocol (newline-delimited):
- *   PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1-3>
+ *   PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0> | MODE|<LYR/EQ>
+ *                 EQ|<levels>
  *                 STA|PLAY | STA|PAUSE | STA|STOP
  *                 META|<artist – title>
  *   ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
@@ -26,6 +27,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/FreeSans9pt7b.h>
 
 // ── Display configuration ───────────────────────────────────────────
 #define SCREEN_WIDTH    128
@@ -69,7 +71,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // ── Lyric text state ────────────────────────────────────────────────
 String currentText     = "";
+float textScale        = 2.0f;    // Display text scale (1.0-3.0, supports 1.5)
 uint8_t textSize       = 2;       // Adafruit GFX text size (1-3)
+bool useCustomFont     = false;
 int  lyricScrollOffset = 0;
 int  totalLyricHeight  = 0;
 unsigned long lastLyricScrollTime = 0;
@@ -100,6 +104,18 @@ int  bufferPos = 0;
 
 // ── Render flag ─────────────────────────────────────────────────────
 bool displayDirty = true;
+
+// ── Display mode ────────────────────────────────────────────────────
+enum DisplayMode { MODE_LYRICS, MODE_EQUALIZER };
+DisplayMode displayMode = MODE_LYRICS;
+
+// ── Equalizer animation state ───────────────────────────────────────
+#define EQ_BARS 12
+#define EQ_MAX_LEVELS 12
+uint8_t eqHeights[EQ_BARS] = {0};
+unsigned long lastEqUpdate = 0;
+const unsigned long EQ_UPDATE_MS = 80;
+unsigned long lastEqHostUpdate = 0;
 
 // ═══════════════════════════════════════════════════════════════════
 //  SETUP
@@ -135,6 +151,7 @@ void loop() {
 
     bool needsRender = false;
     needsRender |= handleLyricScroll();
+    needsRender |= handleEqualizerAnim();
     needsRender |= handleMetaScroll();
 
     if (needsRender || displayDirty) {
@@ -189,9 +206,13 @@ void processCommand(String cmd) {
         }
     }
     else if (cmd.startsWith("FONT|")) {
-        int size = cmd.substring(5).toInt();
-        if (size >= 1 && size <= 3 && size != textSize) {
-            textSize = (uint8_t)size;
+        float size = cmd.substring(5).toFloat();
+        if (size >= 1.0f && size <= 3.0f && size != textScale) {
+            textScale = size;
+            useCustomFont = (size > 1.4f && size < 1.6f);
+            if (!useCustomFont) {
+                textSize = (uint8_t)(size + 0.5f);
+            }
             lyricScrollOffset = 0;
             lastLyricScrollTime = millis();
             displayDirty = true;
@@ -219,6 +240,35 @@ void processCommand(String cmd) {
             displayDirty = true;
         }
     }
+    else if (cmd.startsWith("MODE|")) {
+        String mode = cmd.substring(5);
+        DisplayMode nextMode = (mode == "EQ") ? MODE_EQUALIZER : MODE_LYRICS;
+        if (nextMode != displayMode) {
+            displayMode = nextMode;
+            lyricScrollOffset = 0;
+            lastLyricScrollTime = millis();
+            displayDirty = true;
+        }
+    }
+    else if (cmd.startsWith("EQ|")) {
+        String payload = cmd.substring(3);
+        int index = 0;
+        int start = 0;
+        while (start < payload.length() && index < EQ_BARS) {
+            int comma = payload.indexOf(',', start);
+            if (comma == -1) comma = payload.length();
+            int value = payload.substring(start, comma).toInt();
+            if (value < 0) value = 0;
+            if (value > EQ_MAX_LEVELS) value = EQ_MAX_LEVELS;
+            eqHeights[index++] = (uint8_t)value;
+            start = comma + 1;
+        }
+        while (index < EQ_BARS) {
+            eqHeights[index++] = 0;
+        }
+        lastEqHostUpdate = millis();
+        displayDirty = true;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -228,8 +278,12 @@ void renderDisplay() {
     display.clearDisplay();
 
     // ── 1. Lyrics area (top) ────────────────────────────────────
-    if (currentText.length() > 0) {
-        renderLyrics();
+    if (displayMode == MODE_EQUALIZER) {
+        renderEqualizer();
+    } else {
+        if (currentText.length() > 0) {
+            renderLyrics();
+        }
     }
 
     // ── 2. Separator line ───────────────────────────────────────
@@ -245,53 +299,114 @@ void renderDisplay() {
 //  LYRICS RENDERING  (word-wrap + vertical scroll)
 // ═══════════════════════════════════════════════════════════════════
 void renderLyrics() {
-    display.setTextSize(textSize);
-
-    int charW = 6 * textSize;
-    int charH = 8 * textSize;
-    int charsPerLine = SCREEN_WIDTH / charW;
-    if (charsPerLine < 1) charsPerLine = 1;
-
     // ── Word-wrap into lines ────────────────────────────────────
     #define MAX_WRAP_LINES 32
     String lines[MAX_WRAP_LINES];
     int lineCount = 0;
-    int len = currentText.length();
-    int pos = 0;
 
-    while (pos < len && lineCount < MAX_WRAP_LINES) {
-        int remaining = len - pos;
-        if (remaining <= charsPerLine) {
-            lines[lineCount++] = currentText.substring(pos);
-            break;
+    if (useCustomFont) {
+        display.setFont(&FreeSans9pt7b);
+        display.setTextSize(1);
+        int lineHeight = display.getFont()->yAdvance;
+
+        auto textWidth = [&](const String &text) {
+            int16_t x1, y1;
+            uint16_t w, h;
+            display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+            return (int)w;
+        };
+
+        String line = "";
+        int len = currentText.length();
+        int pos = 0;
+        while (pos < len && lineCount < MAX_WRAP_LINES) {
+            while (pos < len && currentText.charAt(pos) == ' ') pos++;
+            if (pos >= len) break;
+            int end = pos;
+            while (end < len && currentText.charAt(end) != ' ') end++;
+            String word = currentText.substring(pos, end);
+            String candidate = line.length() ? line + " " + word : word;
+            if (textWidth(candidate) <= SCREEN_WIDTH) {
+                line = candidate;
+            } else if (line.length() > 0) {
+                lines[lineCount++] = line;
+                line = word;
+            } else {
+                String chunk = "";
+                for (int i = 0; i < word.length() && lineCount < MAX_WRAP_LINES; i++) {
+                    String attempt = chunk + word.charAt(i);
+                    if (textWidth(attempt) <= SCREEN_WIDTH || chunk.length() == 0) {
+                        chunk = attempt;
+                    } else {
+                        lines[lineCount++] = chunk;
+                        chunk = String(word.charAt(i));
+                    }
+                }
+                line = chunk;
+            }
+            pos = end + 1;
+        }
+        if (line.length() > 0 && lineCount < MAX_WRAP_LINES) {
+            lines[lineCount++] = line;
         }
 
-        int breakAt = pos + charsPerLine;
-        int lastSpace = -1;
-        for (int i = pos; i < breakAt && i < len; i++) {
-            if (currentText.charAt(i) == ' ') {
-                lastSpace = i;
+        totalLyricHeight = lineCount * lineHeight;
+
+        // ── Draw visible lines (clipped to lyrics area) ─────────────
+        int startY = -lyricScrollOffset;
+        for (int i = 0; i < lineCount; i++) {
+            int y = startY + i * lineHeight;
+            if (y + lineHeight > 0 && y < LYRICS_AREA_HEIGHT) {
+                display.setCursor(0, y + lineHeight - 2);
+                display.print(lines[i]);
+            }
+        }
+    } else {
+        display.setFont(nullptr);
+        display.setTextSize(textSize);
+
+        int charW = 6 * textSize;
+        int charH = 8 * textSize;
+        int charsPerLine = SCREEN_WIDTH / charW;
+        if (charsPerLine < 1) charsPerLine = 1;
+
+        int len = currentText.length();
+        int pos = 0;
+
+        while (pos < len && lineCount < MAX_WRAP_LINES) {
+            int remaining = len - pos;
+            if (remaining <= charsPerLine) {
+                lines[lineCount++] = currentText.substring(pos);
+                break;
+            }
+
+            int breakAt = pos + charsPerLine;
+            int lastSpace = -1;
+            for (int i = pos; i < breakAt && i < len; i++) {
+                if (currentText.charAt(i) == ' ') {
+                    lastSpace = i;
+                }
+            }
+
+            if (lastSpace > pos) {
+                lines[lineCount++] = currentText.substring(pos, lastSpace);
+                pos = lastSpace + 1;
+            } else {
+                lines[lineCount++] = currentText.substring(pos, breakAt);
+                pos = breakAt;
             }
         }
 
-        if (lastSpace > pos) {
-            lines[lineCount++] = currentText.substring(pos, lastSpace);
-            pos = lastSpace + 1;
-        } else {
-            lines[lineCount++] = currentText.substring(pos, breakAt);
-            pos = breakAt;
-        }
-    }
+        totalLyricHeight = lineCount * charH;
 
-    totalLyricHeight = lineCount * charH;
-
-    // ── Draw visible lines (clipped to lyrics area) ─────────────
-    int startY = -lyricScrollOffset;
-    for (int i = 0; i < lineCount; i++) {
-        int y = startY + i * charH;
-        if (y + charH > 0 && y < LYRICS_AREA_HEIGHT) {
-            display.setCursor(0, y);
-            display.print(lines[i]);
+        // ── Draw visible lines (clipped to lyrics area) ─────────────
+        int startY = -lyricScrollOffset;
+        for (int i = 0; i < lineCount; i++) {
+            int y = startY + i * charH;
+            if (y + charH > 0 && y < LYRICS_AREA_HEIGHT) {
+                display.setCursor(0, y);
+                display.print(lines[i]);
+            }
         }
     }
 }
@@ -329,6 +444,7 @@ void renderStatusBar() {
     // ── Draw meta text (artist – title) with horizontal scroll ──
     if (metaText.length() == 0) return;
 
+    display.setFont(nullptr);
     display.setTextSize(1);
 
     if (!metaNeedsScroll) {
@@ -356,9 +472,26 @@ void renderStatusBar() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  EQUALIZER RENDERING
+// ═══════════════════════════════════════════════════════════════════
+void renderEqualizer() {
+    int barWidth = SCREEN_WIDTH / EQ_BARS;
+    int maxHeight = LYRICS_AREA_HEIGHT - 2;
+
+    for (int i = 0; i < EQ_BARS; i++) {
+        int levels = eqHeights[i];
+        int barHeight = (levels * maxHeight) / EQ_MAX_LEVELS;
+        int x = i * barWidth;
+        int y = maxHeight - barHeight;
+        display.fillRect(x + 1, y, barWidth - 2, barHeight, SSD1306_WHITE);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  LYRIC VERTICAL SCROLLING
 // ═══════════════════════════════════════════════════════════════════
 bool handleLyricScroll() {
+    if (displayMode != MODE_LYRICS) return false;
     if (totalLyricHeight <= LYRICS_AREA_HEIGHT) return false;
     if (currentText.length() == 0) return false;
 
@@ -373,6 +506,23 @@ bool handleLyricScroll() {
         lyricScrollOffset = 0;
     }
 
+    return true;
+}
+
+bool handleEqualizerAnim() {
+    if (displayMode != MODE_EQUALIZER) return false;
+    if (playState != STATE_PLAYING) return false;
+    if (millis() - lastEqHostUpdate < 250) return false;
+    if (millis() - lastEqUpdate < EQ_UPDATE_MS) return false;
+    lastEqUpdate = millis();
+
+    for (int i = 0; i < EQ_BARS; i++) {
+        int delta = random(-2, 3);
+        int next = (int)eqHeights[i] + delta;
+        if (next < 0) next = 0;
+        if (next > EQ_MAX_LEVELS) next = EQ_MAX_LEVELS;
+        eqHeights[i] = (uint8_t)next;
+    }
     return true;
 }
 

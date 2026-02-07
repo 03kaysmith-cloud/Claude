@@ -13,7 +13,9 @@ DEFAULT_CONFIG = {
     "baud_rate": 115200,
     "auto_connect": True,
     "global_offset_ms": 0,
-    "esp32_font_size": 2,
+    "esp32_font_size": 2.0,
+    "display_mode": "lyrics",
+    "lyric_font_size_px": 13,
     "volume": 0.7,
     "hotkeys": {
         "play_pause": "Space",
@@ -120,12 +122,23 @@ class AppConfig:
         self.save()
 
     @property
-    def esp32_font_size(self) -> int:
-        return self._data.get("esp32_font_size", 2)
+    def esp32_font_size(self) -> float:
+        return self._data.get("esp32_font_size", 2.0)
 
     @esp32_font_size.setter
-    def esp32_font_size(self, val: int):
-        self._data["esp32_font_size"] = max(1, min(3, val))
+    def esp32_font_size(self, val: float):
+        self._data["esp32_font_size"] = max(1.0, min(3.0, float(val)))
+        self.save()
+
+    @property
+    def display_mode(self) -> str:
+        return self._data.get("display_mode", "lyrics")
+
+    @display_mode.setter
+    def display_mode(self, mode: str):
+        if mode not in {"lyrics", "equalizer"}:
+            mode = "lyrics"
+        self._data["display_mode"] = mode
         self.save()
 
     @property
@@ -135,6 +148,15 @@ class AppConfig:
     @volume.setter
     def volume(self, val: float):
         self._data["volume"] = max(0.0, min(1.0, val))
+        self.save()
+
+    @property
+    def lyric_font_size_px(self) -> int:
+        return self._data.get("lyric_font_size_px", 13)
+
+    @lyric_font_size_px.setter
+    def lyric_font_size_px(self, val: int):
+        self._data["lyric_font_size_px"] = max(8, min(32, val))
         self.save()
 
 

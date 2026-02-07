@@ -45,13 +45,22 @@ class AudioPlayer(QObject):
         self._player.mediaStatusChanged.connect(self._on_media_status)
 
         self._last_emitted_pos = -1
+        self._auto_play = False
 
     # ── Public API ───────────────────────────────────────────────
 
     def load(self, filepath: str):
         """Load an audio file for playback."""
+        self._player.stop()
         self._player.setSource(QUrl.fromLocalFile(filepath))
+        self._player.setPosition(0)
         self._last_emitted_pos = -1
+        self._auto_play = False
+
+    def load_and_play(self, filepath: str):
+        """Load an audio file and start playback once ready."""
+        self._auto_play = True
+        self.load(filepath)
 
     def play(self):
         self._player.play()
@@ -129,6 +138,13 @@ class AudioPlayer(QObject):
             self._pos_timer.stop()
 
     def _on_media_status(self, status):
+        if status in (
+            QMediaPlayer.MediaStatus.LoadedMedia,
+            QMediaPlayer.MediaStatus.BufferedMedia,
+        ):
+            if self._auto_play:
+                self._auto_play = False
+                self.play()
         if status == QMediaPlayer.MediaStatus.EndOfMedia:
             self._pos_timer.stop()
             self.media_ended.emit()

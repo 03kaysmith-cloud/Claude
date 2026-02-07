@@ -4,6 +4,7 @@ playback, serial communication, and lyric synchronization.
 """
 
 import os
+import math
 import random
 
 from PySide6.QtWidgets import (
@@ -52,6 +53,10 @@ class MainWindow(QMainWindow):
         self._current_playlist_id: int | None = None
         self._shuffle_on: bool = False
         self._repeat_mode: str = "off"
+        self._eq_timer = QTimer(self)
+        self._eq_timer.setInterval(80)
+        self._eq_timer.timeout.connect(self._send_equalizer_levels)
+        self._eq_timer.start()
 
         # Offset editor reference (for live updates)
         self._offset_dialog: OffsetEditorDialog | None = None
@@ -143,7 +148,7 @@ class MainWindow(QMainWindow):
         self._library_tab.play_track.connect(self._play_track_by_id)
         self._library_tab.edit_offset.connect(self._open_offset_editor)
         self._library_tab.add_to_playlist.connect(
-            self._playlists_tab.add_track_to_current_or_choose
+            self._playlists_tab.add_tracks_to_current_or_choose
         )
 
         # Playlists
@@ -216,8 +221,10 @@ class MainWindow(QMainWindow):
     def _apply_config(self):
         self.player.set_volume(self.config.volume)
         self._controls.set_volume_slider(self.config.volume)
+        self._controls.set_lyric_font_size(self.config.lyric_font_size_px)
         if self.serial.is_connected:
             self.serial.send_font_size(self.config.esp32_font_size)
+            self.serial.send_mode(self.config.display_mode)
 
     # ═════════════════════════════════════════════════════════════
     #  SERIAL
@@ -257,6 +264,7 @@ class MainWindow(QMainWindow):
         self._serial_status.setStyleSheet("color: green; font-weight: bold;")
         self._connect_btn.setText("Disconnect")
         self.serial.send_font_size(self.config.esp32_font_size)
+        self.serial.send_mode(self.config.display_mode)
         # Send current state to ESP32
         self._send_full_state_to_esp32()
 
@@ -376,8 +384,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "File Not Found", f"Audio file missing:\n{audio_path}")
             return
 
-        self.player.load(audio_path)
-        self.player.play()
+        self.player.load_and_play(audio_path)
 
         self._controls.set_now_playing(track["title"], track.get("artist", ""))
 
@@ -471,6 +478,8 @@ class MainWindow(QMainWindow):
         # Forward play state to ESP32
         if self.serial.is_connected:
             self.serial.send_state(state)
+        if state == "playing":
+            self._send_equalizer_levels()
 
     @Slot()
     def _on_media_ended(self):
@@ -504,6 +513,28 @@ class MainWindow(QMainWindow):
                     self.serial.send_text(text)
                 else:
                     self.serial.send_clear()
+
+    def _send_equalizer_levels(self):
+        if not self.serial.is_connected:
+            return
+        if self.config.display_mode != "equalizer":
+            return
+        if not self.player.is_playing:
+            return
+        volume = self.player.get_volume()
+        if volume <= 0.01:
+            levels = [0] * 12
+        else:
+            t = self.player.position / 1000.0
+            base = 0.2 + (volume * 0.8)
+            levels = []
+            for i in range(12):
+                wave = math.sin(t * 2.5 + i * 0.7)
+                wobble = math.sin(t * 0.7 + i * 1.3)
+                value = (wave + 1.0) * 0.5 + (wobble + 1.0) * 0.2
+                level = int(min(12, max(0, value * 12 * base)))
+                levels.append(level)
+        self.serial.send_equalizer(levels)
 
     # ═════════════════════════════════════════════════════════════
     #  OFFSET

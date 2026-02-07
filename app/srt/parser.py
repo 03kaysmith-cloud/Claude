@@ -19,6 +19,9 @@ class LyricLine(NamedTuple):
 _TIMESTAMP_RE = re.compile(
     r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})"
 )
+_LRC_TIMESTAMP_RE = re.compile(
+    r"\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]"
+)
 
 
 def _parse_timestamp(ts: str) -> int:
@@ -39,7 +42,7 @@ def _parse_timestamp(ts: str) -> int:
 
 def parse_srt(text: str) -> list[LyricLine]:
     """
-    Parse SRT formatted text into a list of LyricLine.
+    Parse SRT (or LRC-style) formatted text into a list of LyricLine.
 
     Handles both \\r\\n and \\n line endings.
     """
@@ -78,6 +81,47 @@ def parse_srt(text: str) -> list[LyricLine]:
         if subtitle_text:
             lyrics.append(LyricLine(idx, start_ms, end_ms, subtitle_text))
 
+    if lyrics:
+        return lyrics
+
+    return _parse_lrc(text)
+
+
+def _parse_lrc(text: str) -> list[LyricLine]:
+    """
+    Parse LRC-style timestamps: [mm:ss.xx]Lyric line.
+    """
+    entries: list[tuple[int, str]] = []
+    for raw_line in text.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        timestamps = list(_LRC_TIMESTAMP_RE.finditer(line))
+        if not timestamps:
+            continue
+        lyric_text = _LRC_TIMESTAMP_RE.sub("", line).strip()
+        for match in timestamps:
+            minutes, seconds, millis = match.groups()
+            millis = (millis or "0").ljust(3, "0")
+            start_ms = (
+                int(minutes) * 60000
+                + int(seconds) * 1000
+                + int(millis)
+            )
+            entries.append((start_ms, lyric_text))
+
+    if not entries:
+        return []
+
+    entries.sort(key=lambda item: item[0])
+    lyrics: list[LyricLine] = []
+    for idx, (start_ms, lyric_text) in enumerate(entries, start=1):
+        if idx < len(entries):
+            end_ms = entries[idx][0]
+        else:
+            end_ms = start_ms + 5000
+        if lyric_text:
+            lyrics.append(LyricLine(idx, start_ms, end_ms, lyric_text))
     return lyrics
 
 

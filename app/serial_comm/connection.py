@@ -5,7 +5,8 @@ Runs a reader thread to receive button events and heartbeat responses.
 Provides thread-safe methods to send display commands.
 
 Protocol (newline-delimited, UTF-8):
-    PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1-3>
+    PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0> | MODE|<LYR/EQ>
+                  EQ|<levels>
                   STA|PLAY | STA|PAUSE | STA|STOP
                   META|<artist – title>
     ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
@@ -130,10 +131,10 @@ class SerialConnection(QObject):
         clean = text.replace("\n", " ").replace("\r", "")
         self._write(f"TXT|{clean}\n")
 
-    def send_font_size(self, size: int):
-        """Send FONT|<size> command (1-3)."""
-        size = max(1, min(3, size))
-        self._write(f"FONT|{size}\n")
+    def send_font_size(self, size: float):
+        """Send FONT|<size> command (1.0-3.0)."""
+        size = max(1.0, min(3.0, float(size)))
+        self._write(f"FONT|{size:.1f}\n")
 
     def send_state(self, state: str):
         """Send STA|PLAY, STA|PAUSE, or STA|STOP."""
@@ -144,6 +145,17 @@ class SerialConnection(QObject):
         """Send META|<artist – title> for the status bar."""
         clean = text.replace("\n", " ").replace("\r", "")
         self._write(f"META|{clean}\n")
+
+    def send_mode(self, mode: str):
+        """Send MODE|LYR or MODE|EQ command."""
+        mapped = "EQ" if mode == "equalizer" else "LYR"
+        self._write(f"MODE|{mapped}\n")
+
+    def send_equalizer(self, levels: list[int]):
+        """Send EQ|<levels> command with comma-separated 0-12 values."""
+        clean_levels = [str(max(0, min(12, int(v)))) for v in levels]
+        payload = ",".join(clean_levels)
+        self._write(f"EQ|{payload}\n")
 
     def _send_ping(self):
         """Periodic ping (called by QTimer on main thread)."""

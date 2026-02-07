@@ -42,6 +42,7 @@ class PlaybackControls(QWidget):
         self._seeking = False
         self._shuffle = False
         self._repeat_idx = 0  # index into REPEAT_MODES
+        self._lyric_font_size_px = 13
 
         self._build_ui()
 
@@ -132,7 +133,7 @@ class PlaybackControls(QWidget):
         # ── Current lyric display ────────────────────────────────
         self._lyric_label = QLabel("")
         self._lyric_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._lyric_label.setStyleSheet("color: #0078d7; font-size: 13px;")
+        self._apply_lyric_style()
         self._lyric_label.setWordWrap(True)
         self._lyric_label.setMaximumHeight(40)
         outer.addWidget(self._lyric_label)
@@ -167,6 +168,10 @@ class PlaybackControls(QWidget):
 
     def set_lyric(self, text: str):
         self._lyric_label.setText(text)
+
+    def set_lyric_font_size(self, size_px: int):
+        self._lyric_font_size_px = size_px
+        self._apply_lyric_style()
 
     def set_volume_slider(self, volume: float):
         self._vol_slider.setValue(int(volume * 100))
@@ -206,6 +211,11 @@ class PlaybackControls(QWidget):
         labels = {"off": "Repeat: Off", "playlist": "Repeat: All", "one": "Repeat: One"}
         self._repeat_btn.setText(labels[mode])
         self.repeat_changed.emit(mode)
+
+    def _apply_lyric_style(self):
+        self._lyric_label.setStyleSheet(
+            f"color: #0078d7; font-size: {self._lyric_font_size_px}px;"
+        )
 
 
 def _fmt(ms: int) -> str:
