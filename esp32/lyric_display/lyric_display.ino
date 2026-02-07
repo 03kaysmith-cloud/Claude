@@ -13,7 +13,7 @@
  *   └─────────────────────────┘
  *
  * Protocol (newline-delimited):
- *   PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0>
+ *   PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0> | MODE|<LYR/EQ>
  *                 STA|PLAY | STA|PAUSE | STA|STOP
  *                 META|<artist – title>
  *   ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
@@ -104,6 +104,17 @@ int  bufferPos = 0;
 // ── Render flag ─────────────────────────────────────────────────────
 bool displayDirty = true;
 
+// ── Display mode ────────────────────────────────────────────────────
+enum DisplayMode { MODE_LYRICS, MODE_EQUALIZER };
+DisplayMode displayMode = MODE_LYRICS;
+
+// ── Equalizer animation state ───────────────────────────────────────
+#define EQ_BARS 12
+#define EQ_MAX_LEVELS 12
+uint8_t eqHeights[EQ_BARS] = {0};
+unsigned long lastEqUpdate = 0;
+const unsigned long EQ_UPDATE_MS = 80;
+
 // ═══════════════════════════════════════════════════════════════════
 //  SETUP
 // ═══════════════════════════════════════════════════════════════════
@@ -138,6 +149,7 @@ void loop() {
 
     bool needsRender = false;
     needsRender |= handleLyricScroll();
+    needsRender |= handleEqualizerAnim();
     needsRender |= handleMetaScroll();
 
     if (needsRender || displayDirty) {
@@ -226,6 +238,16 @@ void processCommand(String cmd) {
             displayDirty = true;
         }
     }
+    else if (cmd.startsWith("MODE|")) {
+        String mode = cmd.substring(5);
+        DisplayMode nextMode = (mode == "EQ") ? MODE_EQUALIZER : MODE_LYRICS;
+        if (nextMode != displayMode) {
+            displayMode = nextMode;
+            lyricScrollOffset = 0;
+            lastLyricScrollTime = millis();
+            displayDirty = true;
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -235,8 +257,12 @@ void renderDisplay() {
     display.clearDisplay();
 
     // ── 1. Lyrics area (top) ────────────────────────────────────
-    if (currentText.length() > 0) {
-        renderLyrics();
+    if (displayMode == MODE_EQUALIZER) {
+        renderEqualizer();
+    } else {
+        if (currentText.length() > 0) {
+            renderLyrics();
+        }
     }
 
     // ── 2. Separator line ───────────────────────────────────────
@@ -425,9 +451,26 @@ void renderStatusBar() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+//  EQUALIZER RENDERING
+// ═══════════════════════════════════════════════════════════════════
+void renderEqualizer() {
+    int barWidth = SCREEN_WIDTH / EQ_BARS;
+    int maxHeight = LYRICS_AREA_HEIGHT - 2;
+
+    for (int i = 0; i < EQ_BARS; i++) {
+        int levels = eqHeights[i];
+        int barHeight = (levels * maxHeight) / EQ_MAX_LEVELS;
+        int x = i * barWidth;
+        int y = maxHeight - barHeight;
+        display.fillRect(x + 1, y, barWidth - 2, barHeight, SSD1306_WHITE);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 //  LYRIC VERTICAL SCROLLING
 // ═══════════════════════════════════════════════════════════════════
 bool handleLyricScroll() {
+    if (displayMode != MODE_LYRICS) return false;
     if (totalLyricHeight <= LYRICS_AREA_HEIGHT) return false;
     if (currentText.length() == 0) return false;
 
@@ -442,6 +485,22 @@ bool handleLyricScroll() {
         lyricScrollOffset = 0;
     }
 
+    return true;
+}
+
+bool handleEqualizerAnim() {
+    if (displayMode != MODE_EQUALIZER) return false;
+    if (playState != STATE_PLAYING) return false;
+    if (millis() - lastEqUpdate < EQ_UPDATE_MS) return false;
+    lastEqUpdate = millis();
+
+    for (int i = 0; i < EQ_BARS; i++) {
+        int delta = random(-2, 3);
+        int next = (int)eqHeights[i] + delta;
+        if (next < 0) next = 0;
+        if (next > EQ_MAX_LEVELS) next = EQ_MAX_LEVELS;
+        eqHeights[i] = (uint8_t)next;
+    }
     return true;
 }
 

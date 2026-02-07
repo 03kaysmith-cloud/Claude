@@ -62,6 +62,11 @@ class SettingsDialog(QDialog):
         self._font_combo.addItem("3x", 3.0)
         d_layout.addRow("ESP32 Font Size:", self._font_combo)
 
+        self._mode_combo = QComboBox()
+        self._mode_combo.addItem("Lyrics", "lyrics")
+        self._mode_combo.addItem("Equalizer", "equalizer")
+        d_layout.addRow("Display Mode:", self._mode_combo)
+
         self._lyric_font_spin = QSpinBox()
         self._lyric_font_spin.setRange(8, 32)
         self._lyric_font_spin.setSuffix(" px")
@@ -140,6 +145,11 @@ class SettingsDialog(QDialog):
             if self._font_combo.itemData(idx) == font_size:
                 self._font_combo.setCurrentIndex(idx)
                 break
+        mode_value = self.config.display_mode
+        for idx in range(self._mode_combo.count()):
+            if self._mode_combo.itemData(idx) == mode_value:
+                self._mode_combo.setCurrentIndex(idx)
+                break
         self._lyric_font_spin.setValue(self.config.lyric_font_size_px)
         self._global_offset_spin.setValue(self.config.global_offset_ms)
 
@@ -169,6 +179,7 @@ class SettingsDialog(QDialog):
         self.config.com_port = self._port_combo.currentText().strip()
         self.config.set("baud_rate", int(self._baud_combo.currentText()))
         self.config.esp32_font_size = float(self._font_combo.currentData())
+        self.config.display_mode = str(self._mode_combo.currentData())
         self.config.lyric_font_size_px = self._lyric_font_spin.value()
         self.config.global_offset_ms = self._global_offset_spin.value()
 

@@ -219,6 +219,7 @@ class MainWindow(QMainWindow):
         self._controls.set_lyric_font_size(self.config.lyric_font_size_px)
         if self.serial.is_connected:
             self.serial.send_font_size(self.config.esp32_font_size)
+            self.serial.send_mode(self.config.display_mode)
 
     # ═════════════════════════════════════════════════════════════
     #  SERIAL
@@ -258,6 +259,7 @@ class MainWindow(QMainWindow):
         self._serial_status.setStyleSheet("color: green; font-weight: bold;")
         self._connect_btn.setText("Disconnect")
         self.serial.send_font_size(self.config.esp32_font_size)
+        self.serial.send_mode(self.config.display_mode)
         # Send current state to ESP32
         self._send_full_state_to_esp32()
 

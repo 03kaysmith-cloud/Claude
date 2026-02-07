@@ -14,6 +14,7 @@ DEFAULT_CONFIG = {
     "auto_connect": True,
     "global_offset_ms": 0,
     "esp32_font_size": 2,
+    "display_mode": "lyrics",
     "lyric_font_size_px": 13,
     "volume": 0.7,
     "hotkeys": {
@@ -127,6 +128,17 @@ class AppConfig:
     @esp32_font_size.setter
     def esp32_font_size(self, val: float):
         self._data["esp32_font_size"] = max(1.0, min(3.0, float(val)))
+        self.save()
+
+    @property
+    def display_mode(self) -> str:
+        return self._data.get("display_mode", "lyrics")
+
+    @display_mode.setter
+    def display_mode(self, mode: str):
+        if mode not in {"lyrics", "equalizer"}:
+            mode = "lyrics"
+        self._data["display_mode"] = mode
         self.save()
 
     @property

@@ -5,7 +5,7 @@ Runs a reader thread to receive button events and heartbeat responses.
 Provides thread-safe methods to send display commands.
 
 Protocol (newline-delimited, UTF-8):
-    PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0>
+    PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0> | MODE|<LYR/EQ>
                   STA|PLAY | STA|PAUSE | STA|STOP
                   META|<artist – title>
     ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
@@ -144,6 +144,11 @@ class SerialConnection(QObject):
         """Send META|<artist – title> for the status bar."""
         clean = text.replace("\n", " ").replace("\r", "")
         self._write(f"META|{clean}\n")
+
+    def send_mode(self, mode: str):
+        """Send MODE|LYR or MODE|EQ command."""
+        mapped = "EQ" if mode == "equalizer" else "LYR"
+        self._write(f"MODE|{mapped}\n")
 
     def _send_ping(self):
         """Periodic ping (called by QTimer on main thread)."""
