@@ -32,3 +32,15 @@ Example workflow:
 3. Send the resulting bitmap to the Waveshare driver.
 
 This keeps your HTML/CSS prototype as the source of truth while producing the exact pixels needed by the e‑ink display.
+
+## Running on a Raspberry Pi
+
+You do **not** need a separate computer once the display is attached to a Raspberry Pi. The Pi can run everything from its SD card and update the display directly over SPI.
+
+Typical setup:
+
+- Raspberry Pi boots from SD card and runs your display updater script/service.
+- The Waveshare display is connected to the Pi via SPI/GPIO.
+- Your script can fetch data over Wi‑Fi (APIs, MQTT, local server) and render/update the bitmap on a schedule.
+
+So the display can be fully standalone: power the Pi, connect Wi‑Fi, and it updates without any external computer.
