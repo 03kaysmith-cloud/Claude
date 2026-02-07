@@ -98,7 +98,7 @@ body {
   height: 100%;
   padding: 6px 8px;
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   gap: 4px;
   font-size: 8px;
 }
@@ -149,6 +149,21 @@ body {
   gap: 3px;
 }
 
+.weather-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.weather-badge {
+  font-size: 6px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+
 .weather-icons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -168,8 +183,8 @@ body {
 
 .pixel-icon {
   position: relative;
-  width: 16px;
-  height: 10px;
+  width: 14px;
+  height: 9px;
 }
 
 .pixel-icon::before {
@@ -283,27 +298,11 @@ body {
   font-weight: 600;
 }
 
-.agenda ul {
-  list-style: none;
-  margin: 3px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 1px;
-  font-size: 7px;
-}
-
-.agenda li {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.35);
-  padding-bottom: 2px;
-}
-
 footer {
   display: flex;
   justify-content: center;
   gap: 6px;
-  font-size: 8px;
+  font-size: 7px;
 }
 
 .dot {
