@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>2.13" E-Ink Emulator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="controls">
+        <h1>Waveshare 2.13&quot; E-Ink Emulator</h1>
+        <p>
+          This emulator renders a 250×122 canvas (1-bit style) and scales it up so you can preview
+          layouts before your display arrives.
+        </p>
+        <div class="control-grid">
+          <label>
+            Scale
+            <input id="scale" type="range" min="2" max="6" step="1" value="4" />
+          </label>
+          <label>
+            Grid overlay
+            <input id="grid" type="checkbox" checked />
+          </label>
+          <label>
+            Dither
+            <input id="dither" type="checkbox" checked />
+          </label>
+        </div>
+      </section>
+
+      <section class="preview">
+        <div class="frame">
+          <div class="display" id="display">
+            <div class="dashboard" id="dashboard">
+              <header>
+                <div>
+                  <p class="label">Now</p>
+                  <h2 id="time">12:45</h2>
+                </div>
+                <div class="status">
+                  <span class="pill">SYNC OK</span>
+                  <span class="pill">42%</span>
+                </div>
+              </header>
+
+              <section class="metrics">
+                <div>
+                  <p class="label">Temp</p>
+                  <p class="value">21°C</p>
+                </div>
+                <div>
+                  <p class="label">Humidity</p>
+                  <p class="value">56%</p>
+                </div>
+                <div>
+                  <p class="label">Traffic</p>
+                  <p class="value">Light</p>
+                </div>
+              </section>
+
+              <section class="agenda">
+                <p class="label">Next</p>
+                <ul>
+                  <li><strong>09:00</strong> Ops stand-up</li>
+                  <li><strong>11:30</strong> Dashboard review</li>
+                  <li><strong>15:00</strong> Sprint demo</li>
+                </ul>
+              </section>
+
+              <footer>
+                <span>Mon 7 Feb</span>
+                <span class="dot">•</span>
+                <span>Home lab</span>
+              </footer>
+            </div>
+          </div>
+        </div>
+        <p class="hint">
+          Drop your own HTML inside <code>.dashboard</code> to mock real apps. Keep within 250×122 px.
+        </p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
