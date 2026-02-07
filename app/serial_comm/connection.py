@@ -5,7 +5,7 @@ Runs a reader thread to receive button events and heartbeat responses.
 Provides thread-safe methods to send display commands.
 
 Protocol (newline-delimited, UTF-8):
-    PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1-3>
+    PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0>
                   STA|PLAY | STA|PAUSE | STA|STOP
                   META|<artist – title>
     ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
@@ -130,10 +130,10 @@ class SerialConnection(QObject):
         clean = text.replace("\n", " ").replace("\r", "")
         self._write(f"TXT|{clean}\n")
 
-    def send_font_size(self, size: int):
-        """Send FONT|<size> command (1-3)."""
-        size = max(1, min(3, size))
-        self._write(f"FONT|{size}\n")
+    def send_font_size(self, size: float):
+        """Send FONT|<size> command (1.0-3.0)."""
+        size = max(1.0, min(3.0, float(size)))
+        self._write(f"FONT|{size:.1f}\n")
 
     def send_state(self, state: str):
         """Send STA|PLAY, STA|PAUSE, or STA|STOP."""

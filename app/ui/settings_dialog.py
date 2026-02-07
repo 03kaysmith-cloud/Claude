@@ -55,10 +55,12 @@ class SettingsDialog(QDialog):
         display_tab = QWidget()
         d_layout = QFormLayout(display_tab)
 
-        self._font_spin = QSpinBox()
-        self._font_spin.setRange(1, 3)
-        self._font_spin.setSuffix("x")
-        d_layout.addRow("ESP32 Font Size:", self._font_spin)
+        self._font_combo = QComboBox()
+        self._font_combo.addItem("1x", 1.0)
+        self._font_combo.addItem("1.5x", 1.5)
+        self._font_combo.addItem("2x", 2.0)
+        self._font_combo.addItem("3x", 3.0)
+        d_layout.addRow("ESP32 Font Size:", self._font_combo)
 
         self._lyric_font_spin = QSpinBox()
         self._lyric_font_spin.setRange(8, 32)
@@ -133,7 +135,11 @@ class SettingsDialog(QDialog):
         if idx >= 0:
             self._baud_combo.setCurrentIndex(idx)
 
-        self._font_spin.setValue(self.config.esp32_font_size)
+        font_size = float(self.config.esp32_font_size)
+        for idx in range(self._font_combo.count()):
+            if self._font_combo.itemData(idx) == font_size:
+                self._font_combo.setCurrentIndex(idx)
+                break
         self._lyric_font_spin.setValue(self.config.lyric_font_size_px)
         self._global_offset_spin.setValue(self.config.global_offset_ms)
 
@@ -162,7 +168,7 @@ class SettingsDialog(QDialog):
     def _apply(self):
         self.config.com_port = self._port_combo.currentText().strip()
         self.config.set("baud_rate", int(self._baud_combo.currentText()))
-        self.config.esp32_font_size = self._font_spin.value()
+        self.config.esp32_font_size = float(self._font_combo.currentData())
         self.config.lyric_font_size_px = self._lyric_font_spin.value()
         self.config.global_offset_ms = self._global_offset_spin.value()
 

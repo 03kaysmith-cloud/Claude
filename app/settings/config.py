@@ -121,12 +121,12 @@ class AppConfig:
         self.save()
 
     @property
-    def esp32_font_size(self) -> int:
-        return self._data.get("esp32_font_size", 2)
+    def esp32_font_size(self) -> float:
+        return self._data.get("esp32_font_size", 2.0)
 
     @esp32_font_size.setter
-    def esp32_font_size(self, val: int):
-        self._data["esp32_font_size"] = max(1, min(3, val))
+    def esp32_font_size(self, val: float):
+        self._data["esp32_font_size"] = max(1.0, min(3.0, float(val)))
         self.save()
 
     @property
