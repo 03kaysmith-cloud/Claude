@@ -13,7 +13,7 @@ DEFAULT_CONFIG = {
     "baud_rate": 115200,
     "auto_connect": True,
     "global_offset_ms": 0,
-    "esp32_font_size": 2,
+    "esp32_font_size": 2.0,
     "display_mode": "lyrics",
     "lyric_font_size_px": 13,
     "volume": 0.7,

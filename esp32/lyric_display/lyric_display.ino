@@ -14,6 +14,7 @@
  *
  * Protocol (newline-delimited):
  *   PC -> ESP32:  CLR | TXT|<text> | PING | FONT|<1.0-3.0> | MODE|<LYR/EQ>
+ *                 EQ|<levels>
  *                 STA|PLAY | STA|PAUSE | STA|STOP
  *                 META|<artist – title>
  *   ESP32 -> PC:  PONG | BTN|PRESS | BTN|LONG
@@ -114,6 +115,7 @@ DisplayMode displayMode = MODE_LYRICS;
 uint8_t eqHeights[EQ_BARS] = {0};
 unsigned long lastEqUpdate = 0;
 const unsigned long EQ_UPDATE_MS = 80;
+unsigned long lastEqHostUpdate = 0;
 
 // ═══════════════════════════════════════════════════════════════════
 //  SETUP
@@ -247,6 +249,25 @@ void processCommand(String cmd) {
             lastLyricScrollTime = millis();
             displayDirty = true;
         }
+    }
+    else if (cmd.startsWith("EQ|")) {
+        String payload = cmd.substring(3);
+        int index = 0;
+        int start = 0;
+        while (start < payload.length() && index < EQ_BARS) {
+            int comma = payload.indexOf(',', start);
+            if (comma == -1) comma = payload.length();
+            int value = payload.substring(start, comma).toInt();
+            if (value < 0) value = 0;
+            if (value > EQ_MAX_LEVELS) value = EQ_MAX_LEVELS;
+            eqHeights[index++] = (uint8_t)value;
+            start = comma + 1;
+        }
+        while (index < EQ_BARS) {
+            eqHeights[index++] = 0;
+        }
+        lastEqHostUpdate = millis();
+        displayDirty = true;
     }
 }
 
@@ -491,6 +512,7 @@ bool handleLyricScroll() {
 bool handleEqualizerAnim() {
     if (displayMode != MODE_EQUALIZER) return false;
     if (playState != STATE_PLAYING) return false;
+    if (millis() - lastEqHostUpdate < 250) return false;
     if (millis() - lastEqUpdate < EQ_UPDATE_MS) return false;
     lastEqUpdate = millis();
 
