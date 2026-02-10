@@ -1,0 +1,5 @@
+# Weather Dashboard cron job
+# Runs every minute - weather data is cached internally (refreshes every 15 min)
+# Adjust the path below to match your installation directory
+
+* * * * * /home/pi/weather-dashboard/venv/bin/python /home/pi/weather-dashboard/weather_dashboard.py >> /tmp/weather_dashboard.log 2>&1
