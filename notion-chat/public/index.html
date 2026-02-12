@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notion Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar: saved databases -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>Databases</h2>
+        <button class="btn-icon" id="btn-toggle-sidebar" title="Toggle sidebar">&#9776;</button>
+      </div>
+
+      <div class="db-add">
+        <input type="text" id="db-url-input" placeholder="Paste Notion database URL..." />
+        <button id="btn-add-db" class="btn-primary">Add</button>
+      </div>
+
+      <div class="db-list" id="db-list">
+        <!-- saved databases rendered here -->
+      </div>
+
+      <div class="sidebar-actions">
+        <button id="btn-discover" class="btn-secondary">Discover All Databases</button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+      <header class="topbar">
+        <button class="btn-icon sidebar-open-btn" id="btn-open-sidebar" title="Open sidebar">&#9776;</button>
+        <h1>Notion Chat</h1>
+        <span class="status" id="status">Ready</span>
+      </header>
+
+      <div class="chat" id="chat">
+        <div class="message system">
+          <p>Welcome! This interface lets you browse and interact with your Notion workspace.</p>
+          <p><strong>Quick commands:</strong></p>
+          <ul>
+            <li><code>/databases</code> &mdash; list all accessible databases</li>
+            <li><code>/query &lt;database name&gt;</code> &mdash; query a saved database</li>
+            <li><code>/search &lt;text&gt;</code> &mdash; search across your workspace</li>
+            <li><code>/view &lt;database name&gt;</code> &mdash; view database schema</li>
+            <li><code>/read &lt;page title&gt;</code> &mdash; read a page's content</li>
+            <li><code>/add &lt;database name&gt; | property: value, ...</code> &mdash; add entry</li>
+            <li>Or just type naturally to search your workspace</li>
+          </ul>
+        </div>
+      </div>
+
+      <form class="input-bar" id="input-form">
+        <input type="text" id="user-input" placeholder="Type a command or search..." autocomplete="off" />
+        <button type="submit" class="btn-primary">Send</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
