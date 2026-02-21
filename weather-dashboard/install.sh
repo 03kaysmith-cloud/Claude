@@ -60,24 +60,44 @@ if grep -q "YOUR_OPENWEATHERMAP_API_KEY" "$SCRIPT_DIR/config.json"; then
     echo ""
 fi
 
-# ── 6. Install cron job ─────────────────────────────────────────────────
-echo "[6/6] Installing cron job (runs every minute)..."
-CRON_CMD="* * * * * $VENV_DIR/bin/python $SCRIPT_DIR/weather_dashboard.py >> /tmp/weather_dashboard.log 2>&1"
-# Remove old entry if present, then add new one
-(crontab -l 2>/dev/null | grep -v "weather_dashboard.py" || true; echo "$CRON_CMD") | crontab -
+# ── 6. Remove old cron job if present ──────────────────────────────────
+(crontab -l 2>/dev/null | grep -v "weather_dashboard.py" || true) | crontab -
+
+# ── 7. Install systemd service ────────────────────────────────────────
+echo "[6/6] Installing systemd service..."
+sudo tee /etc/systemd/system/weather-dashboard.service > /dev/null <<UNIT
+[Unit]
+Description=Weather Dashboard e-Paper Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=$VENV_DIR/bin/python $SCRIPT_DIR/server.py
+WorkingDirectory=$SCRIPT_DIR
+Restart=always
+RestartSec=10
+User=$(whoami)
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+sudo systemctl daemon-reload
+sudo systemctl enable weather-dashboard.service
+sudo systemctl start weather-dashboard.service
 
 echo ""
 echo "=== Installation complete ==="
 echo ""
-echo "The dashboard will run every minute via cron."
-echo "Weather data is cached and only refreshed every 15 minutes."
+echo "The web server is running on port 5000."
+echo "Open http://$(hostname -I | awk '{print $1}'):5000 in your browser."
 echo ""
 echo "To run manually:"
 echo "  source $VENV_DIR/bin/activate"
-echo "  python $SCRIPT_DIR/weather_dashboard.py"
+echo "  python $SCRIPT_DIR/server.py"
 echo ""
 echo "To view logs:"
-echo "  tail -f /tmp/weather_dashboard.log"
+echo "  sudo journalctl -u weather-dashboard -f"
 echo ""
-echo "To remove the cron job:"
-echo "  crontab -l | grep -v weather_dashboard.py | crontab -"
+echo "To stop the service:"
+echo "  sudo systemctl stop weather-dashboard"
