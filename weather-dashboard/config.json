@@ -1,0 +1,11 @@
+{
+    "api_key": "YOUR_OPENWEATHERMAP_API_KEY",
+    "latitude": 51.5033,
+    "longitude": -0.2804,
+    "location_name": "Acton Town",
+    "units": "metric",
+    "cache_file": "/tmp/weather_cache.json",
+    "cache_max_age_minutes": 15,
+    "display_width": 250,
+    "display_height": 122
+}
